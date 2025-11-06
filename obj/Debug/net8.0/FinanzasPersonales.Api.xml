@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>FinanzasPersonales.Api</name>
+    </assembly>
+    <members>
+        <member name="T:FinanzasPersonales.Api.Controllers.GastosController">
+            <summary>
+            API para gestionar todos los gastos de la aplicación.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.#ctor(FinanzasPersonales.Api.Data.FinanzasDbContext)">
+            <summary>
+            Constructor del controlador.
+            </summary>
+            <param name="context">El contexto de la base de datos (inyectado por ASP.NET).</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.GetGastos">
+            <summary>
+            Obtiene una lista completa de todos los gastos registrados.
+            </summary>
+            <returns>Una lista de objetos Gasto.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.GetGasto(System.Int32)">
+            <summary>
+            Obtiene un gasto específico por su ID.
+            </summary>
+            <param name="id">El ID único del gasto a buscar.</param>
+            <returns>El objeto Gasto correspondiente, o un 404 si no se encuentra.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.PostGasto(FinanzasPersonales.Api.Models.Gasto)">
+             <summary>
+             Registra un nuevo gasto en el sistema.
+             </summary>
+             <remarks>
+             Este endpoint reemplaza la macro 'btnGuardar_Click' de Excel.
+             Ejemplo de JSON que se debe enviar en el cuerpo (body) de la solicitud:
+             
+                 POST /api/Gastos
+                 {
+                   "fecha": "2025-11-06T15:30:00",
+                   "categoria": "Comida",
+                   "tipo": "Variable",
+                   "descripcion": "Almuerzo de trabajo",
+                   "monto": 12.50
+                 }
+            
+             </remarks>
+             <param name="gasto">El objeto de Gasto a crear desde el cuerpo de la solicitud.</param>
+             <returns>El nuevo gasto creado con su ID asignado por la BD.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.PutGasto(System.Int32,FinanzasPersonales.Api.Models.Gasto)">
+            <summary>
+            Actualiza un gasto existente usando su ID.
+            </summary>
+            <param name="id">El ID del gasto que se desea modificar.</param>
+            <param name="gasto">El objeto Gasto con la información actualizada.</param>
+            <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.DeleteGasto(System.Int32)">
+            <summary>
+            Elimina un gasto del sistema por su ID.
+            </summary>
+            <param name="id">El ID del gasto a eliminar.</param>
+            <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Migrations.InitialCreate">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+    </members>
+</doc>
