@@ -289,3 +289,4 @@ C:\Users\LENOVO\source\repos\FinanzasPersonales.Api\FinanzasPersonales.Api\obj\D
 C:\Users\LENOVO\source\repos\FinanzasPersonales.Api\FinanzasPersonales.Api\obj\Debug\net8.0\FinanzasPersonales.Api.RazorAssemblyInfo.cs
 C:\Users\LENOVO\source\repos\FinanzasPersonales.Api\FinanzasPersonales.Api\bin\Debug\net8.0\FinanzasPersonales.Api.xml
 C:\Users\LENOVO\source\repos\FinanzasPersonales.Api\FinanzasPersonales.Api\obj\Debug\net8.0\FinanzasPersonales.Api.xml
+C:\Users\LENOVO\source\repos\FinanzasPersonales.Api\FinanzasPersonales.Api\obj\Debug\net8.0\FinanzasPersonales.Api.sourcelink.json

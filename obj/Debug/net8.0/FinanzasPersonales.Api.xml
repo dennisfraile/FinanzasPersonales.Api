@@ -64,6 +64,58 @@
             <param name="id">El ID del gasto a eliminar.</param>
             <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
         </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.IngresosController">
+            <summary>
+            API para gestionar todos los gastos de la aplicación.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.GetIngresos">
+            <summary>
+            Obtiene una lista completa de todos los ingresos registrados.
+            </summary>
+            <returns>Una lista de objetos Ingreso.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.GetIngreso(System.Int32)">
+            <summary>
+            Obtiene un ingreso específico por su ID.
+            </summary>
+            <param name="id">El ID único del ingreso a buscar.</param>
+            <returns>El objeto Ingreso correspondiente, o un 404 si no se encuentra.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.PostIngreso(FinanzasPersonales.Api.Models.Ingreso)">
+             <summary>
+             Registra un nuevo ingreso en el sistema.
+             </summary>
+             <remarks>
+             Este endpoint reemplaza la macro 'btnGuardar_Click' de Excel.
+             Ejemplo de JSON que se debe enviar en el cuerpo (body) de la solicitud:
+             
+                 POST /api/Ingresos
+                 {
+                   "fecha": "2025-11-06T15:30:00",
+                   "fuente": "Salario quincena 2",
+                   "monto": 12.50
+                 }
+            
+             </remarks>
+             <param name="ingreso">El objeto de Ingreso a crear desde el cuerpo de la solicitud.</param>
+             <returns>El nuevo ingreso creado con su ID asignado por la BD.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.PutIngreso(System.Int32,FinanzasPersonales.Api.Models.Ingreso)">
+            <summary>
+            Actualiza un ingreso existente usando su ID.
+            </summary>
+            <param name="id">El ID del gasto que se desea modificar.</param>
+            <param name="ingreso">El objeto Ingreso con la información actualizada.</param>
+            <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.DeleteIngreso(System.Int32)">
+            <summary>
+            Elimina un ingreso del sistema por su ID.
+            </summary>
+            <param name="id">El ID del ingreso a eliminar.</param>
+            <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
+        </member>
         <member name="T:FinanzasPersonales.Api.Migrations.InitialCreate">
             <inheritdoc />
         </member>
