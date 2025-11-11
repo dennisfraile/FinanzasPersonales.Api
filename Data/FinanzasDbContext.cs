@@ -1,8 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 namespace FinanzasPersonales.Api.Data
 {
-    public class FinanzasDbContext : DbContext
+    public class FinanzasDbContext : IdentityDbContext<IdentityUser>
     {
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {

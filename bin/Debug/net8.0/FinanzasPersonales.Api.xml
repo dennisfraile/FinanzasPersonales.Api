@@ -4,6 +4,31 @@
         <name>FinanzasPersonales.Api</name>
     </assembly>
     <members>
+        <member name="M:FinanzasPersonales.Api.Controllers.AuthController.Register(FinanzasPersonales.Api.Dtos.RegisterDto)">
+            <summary>
+            Registra un nuevo usuario en el sistema.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.AuthController.Login(FinanzasPersonales.Api.Dtos.LoginDto)">
+            <summary>
+            Inicia sesión (autentica) un usuario y devuelve un token JWT.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.DashboardController">
+            <summary>
+            Proporciona endpoints para cálculos de resumen financiero y lógica de negocio.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetResumenQuincenal">
+            <summary>
+            Obtiene el resumen financiero quincenal y mensual para el usuario autenticado.
+            </summary>
+            <remarks>
+            Reemplaza todas las fórmulas del Dashboard de Excel.
+            Calcula el saldo disponible basado en la lógica de "vivir con ingresos anteriores"
+            y el flujo libre mensual total para el cálculo de metas.
+            </remarks>
+        </member>
         <member name="T:FinanzasPersonales.Api.Controllers.GastosController">
             <summary>
             API para gestionar todos los gastos de la aplicación.
@@ -116,6 +141,59 @@
             <param name="id">El ID del ingreso a eliminar.</param>
             <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
         </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.MetasController">
+            <summary>
+            API para gestionar todos los gastos de la aplicación.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.GetMetas">
+            <summary>
+            Obtiene una lista completa de todas las metas registradas.
+            </summary>
+            <returns>Una lista de objetos Meta.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.GetMeta(System.Int32)">
+            <summary>
+            Obtiene una meta específico por su ID.
+            </summary>
+            <param name="id">El ID único de la meta a buscar.</param>
+            <returns>El objeto Meta correspondiente, o un 404 si no se encuentra.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.PostMeta(FinanzasPersonales.Api.Models.Meta)">
+             <summary>
+             Registra una nueva meta en el sistema.
+             </summary>
+             <remarks>
+             Este endpoint reemplaza la macro 'btnGuardar_Click' de Excel.
+             Ejemplo de JSON que se debe enviar en el cuerpo (body) de la solicitud:
+             
+                 POST /api/Ingresos
+                 {
+                   "meta": "Comprar nuevo celular",
+                   "monto_total": 700,
+                   "ahorro_actual": 0.00,
+                   "monto_restante": 700
+                 }
+            
+             </remarks>
+             <param name="meta">El objeto de Meta a crear desde el cuerpo de la solicitud.</param>
+             <returns>La mueva meta creada con su ID asignado por la BD.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.PutMeta(System.Int32,FinanzasPersonales.Api.Models.Meta)">
+            <summary>
+            Actualiza una meta existente usando su ID.
+            </summary>
+            <param name="id">El ID de la meta que se desea modificar.</param>
+            <param name="meta">El objeto Mete con la información actualizada.</param>
+            <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.DeleteMeta(System.Int32)">
+            <summary>
+            Elimina la meta del sistema por su ID.
+            </summary>
+            <param name="id">El ID de la meta a eliminar.</param>
+            <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
+        </member>
         <member name="T:FinanzasPersonales.Api.Migrations.InitialCreate">
             <inheritdoc />
         </member>
@@ -126,6 +204,30 @@
             <inheritdoc />
         </member>
         <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:FinanzasPersonales.Api.Migrations.AddIdentityTables">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
     </members>

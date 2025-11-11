@@ -16,19 +16,15 @@ namespace FinanzasPersonales.Api.Controllers
     /// <summary>
     /// API para gestionar todos los gastos de la aplicación.
     /// </summary>
-    [Route("api/[controller]")] // Define la ruta base como /api/Gastos
+    [Route("api/[controller]")] // Define la ruta base como /api/Metas
     [ApiController]
     [Produces("application/json")] // Especifica que este controlador siempre devolverá JSON
     [Authorize]
-    public class GastosController : ControllerBase
+    public class MetasController : Controller
     {
         private readonly FinanzasDbContext _context;
 
-        /// <summary>
-        /// Constructor del controlador.
-        /// </summary>
-        /// <param name="context">El contexto de la base de datos (inyectado por ASP.NET).</param>
-        public GastosController(FinanzasDbContext context)
+        public MetasController(FinanzasDbContext context)
         {
             _context = context;
         }
@@ -36,95 +32,94 @@ namespace FinanzasPersonales.Api.Controllers
         // --- ENDPOINTS (MÉTODOS) ---
 
         /// <summary>
-        /// Obtiene una lista completa de todos los gastos registrados.
+        /// Obtiene una lista completa de todas las metas registradas.
         /// </summary>
-        /// <returns>Una lista de objetos Gasto.</returns>
+        /// <returns>Una lista de objetos Meta.</returns>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)] // Devuelve 200 si es exitoso
-        public async Task<ActionResult<IEnumerable<Gasto>>> GetGastos()
+        public async Task<ActionResult<IEnumerable<Meta>>> GetMetas()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var gastosDelUsuario = await _context.Gastos
+            var metasDelUsuario = await _context.Metas
                                         .Where(g => g.UserId == userId)
                                         .ToListAsync();
 
-            return Ok(gastosDelUsuario);
+            return Ok(metasDelUsuario);
         }
 
         /// <summary>
-        /// Obtiene un gasto específico por su ID.
+        /// Obtiene una meta específico por su ID.
         /// </summary>
-        /// <param name="id">El ID único del gasto a buscar.</param>
-        /// <returns>El objeto Gasto correspondiente, o un 404 si no se encuentra.</returns>
-        [HttpGet("{id}")] // Define la ruta como /api/Gastos/5
+        /// <param name="id">El ID único de la meta a buscar.</param>
+        /// <returns>El objeto Meta correspondiente, o un 404 si no se encuentra.</returns>
+        [HttpGet("{id}")] // Define la ruta como /api/Metas/5
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Devuelve 404 si no lo encuentra
-        public async Task<ActionResult<Gasto>> GetGasto(int id)
+        public async Task<ActionResult<Meta>> GetMeta(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Busca un gasto que coincida con el ID Y que pertenezca al usuario
-            var gasto = await _context.Gastos
+            // Busca una meta que coincida con el ID Y que pertenezca al usuario
+            var meta = await _context.Metas
                                 .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
-            if (gasto == null)
+            if (meta == null)
             {
                 // Si no existe, o no es de este usuario, devuelve 404
                 return NotFound();
             }
 
-            return Ok(gasto);
+            return Ok(meta);
         }
 
         /// <summary>
-        /// Registra un nuevo gasto en el sistema.
+        /// Registra una nueva meta en el sistema.
         /// </summary>
         /// <remarks>
         /// Este endpoint reemplaza la macro 'btnGuardar_Click' de Excel.
         /// Ejemplo de JSON que se debe enviar en el cuerpo (body) de la solicitud:
         /// 
-        ///     POST /api/Gastos
+        ///     POST /api/Ingresos
         ///     {
-        ///       "fecha": "2025-11-06T15:30:00",
-        ///       "categoria": "Comida",
-        ///       "tipo": "Variable",
-        ///       "descripcion": "Almuerzo de trabajo",
-        ///       "monto": 12.50
+        ///       "meta": "Comprar nuevo celular",
+        ///       "monto_total": 700,
+        ///       "ahorro_actual": 0.00,
+        ///       "monto_restante": 700
         ///     }
         ///
         /// </remarks>
-        /// <param name="gasto">El objeto de Gasto a crear desde el cuerpo de la solicitud.</param>
-        /// <returns>El nuevo gasto creado con su ID asignado por la BD.</returns>
+        /// <param name="meta">El objeto de Meta a crear desde el cuerpo de la solicitud.</param>
+        /// <returns>La mueva meta creada con su ID asignado por la BD.</returns>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)] // Éxito: Devuelve un 201
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: Si los datos del modelo son incorrectos
-        public async Task<ActionResult<Gasto>> PostGasto(Gasto gasto)
+        public async Task<ActionResult<Meta>> PostMeta(Meta meta)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // --- ¡IMPORTANTE! Asignamos el gasto al usuario logueado ---
-            gasto.UserId = userId;
+            // --- ¡IMPORTANTE! Asignamos la meta al usuario logueado ---
+            meta.UserId = userId;
 
-            _context.Gastos.Add(gasto);
+            _context.Metas.Add(meta);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetGasto", new { id = gasto.Id }, gasto);
+            return CreatedAtAction("GetMeta", new { id = meta.Id }, meta);
         }
 
         /// <summary>
-        /// Actualiza un gasto existente usando su ID.
+        /// Actualiza una meta existente usando su ID.
         /// </summary>
-        /// <param name="id">El ID del gasto que se desea modificar.</param>
-        /// <param name="gasto">El objeto Gasto con la información actualizada.</param>
+        /// <param name="id">El ID de la meta que se desea modificar.</param>
+        /// <param name="meta">El objeto Mete con la información actualizada.</param>
         /// <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
-        [HttpPut("{id}")] // Define la ruta como PUT /api/Gastos/5
+        [HttpPut("{id}")] // Define la ruta como PUT /api/Metas/5
         [ProducesResponseType(StatusCodes.Status204NoContent)] // Éxito: 204
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: IDs no coinciden
-        [ProducesResponseType(StatusCodes.Status404NotFound)] // Falla: Gasto no existe
-        public async Task<IActionResult> PutGasto(int id, Gasto gasto)
+        [ProducesResponseType(StatusCodes.Status404NotFound)] // Falla: Ingreso no existe
+        public async Task<IActionResult> PutMeta(int id, Meta meta)
         {
-            if (id != gasto.Id)
+            if (id != meta.Id)
             {
                 return BadRequest("El ID de la URL no coincide con el ID del cuerpo.");
             }
@@ -132,21 +127,21 @@ namespace FinanzasPersonales.Api.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             // Asegurarnos de que el UserId en el objeto a guardar sea el del usuario logueado
-            gasto.UserId = userId;
+            meta.UserId = userId;
 
-            // Verificamos si el gasto que intenta modificar realmente le pertenece
-            var gastoExistente = await _context.Gastos
+            // Verificamos si la meta que intenta modificar realmente le pertenece
+            var metaExistente = await _context.Metas
                                         .AsNoTracking() // No lo rastreamos, solo lo leemos
                                         .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
-            if (gastoExistente == null)
+            if (metaExistente == null)
             {
-                // Intenta modificar un gasto que no existe O no es suyo
+                // Intenta modificar una meta que no existe O no es suyo
                 return NotFound();
             }
 
-            // Ahora sí, marcamos la entidad 'gasto' (que tiene los datos nuevos) como modificada
-            _context.Entry(gasto).State = EntityState.Modified;
+            // Ahora sí, marcamos la entidad 'meta' (que tiene los datos nuevos) como modificada
+            _context.Entry(meta).State = EntityState.Modified;
 
             try
             {
@@ -154,7 +149,7 @@ namespace FinanzasPersonales.Api.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!_context.Gastos.Any(e => e.Id == id))
+                if (!_context.Metas.Any(e => e.Id == id))
                 {
                     return NotFound();
                 }
@@ -168,31 +163,32 @@ namespace FinanzasPersonales.Api.Controllers
         }
 
         /// <summary>
-        /// Elimina un gasto del sistema por su ID.
+        /// Elimina la meta del sistema por su ID.
         /// </summary>
-        /// <param name="id">El ID del gasto a eliminar.</param>
+        /// <param name="id">El ID de la meta a eliminar.</param>
         /// <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
-        [HttpDelete("{id}")] // Define la ruta como DELETE /api/Gastos/5
+        [HttpDelete("{id}")] // Define la ruta como DELETE /api/Metas/5
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> DeleteGasto(int id)
+        public async Task<IActionResult> DeleteMeta(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Buscamos el gasto que coincida con el ID Y que sea del usuario
-            var gasto = await _context.Gastos
+            // Buscamos la meta que coincida con el ID Y que sea del usuario
+            var meta = await _context.Metas
                                 .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
-            if (gasto == null)
+            if (meta == null)
             {
                 // No existe O no es suyo
                 return NotFound();
             }
 
-            _context.Gastos.Remove(gasto);
+            _context.Metas.Remove(meta);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
+
     }
 }

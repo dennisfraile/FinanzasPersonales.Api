@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization; // Para [Authorize]
+using System.Security.Claims; // Para obtener el ID del usuario desde el token
 
 namespace FinanzasPersonales.Api.Controllers
 {
@@ -17,6 +19,7 @@ namespace FinanzasPersonales.Api.Controllers
     [Route("api/[controller]")] // Define la ruta base como /api/Gastos
     [ApiController]
     [Produces("application/json")] // Especifica que este controlador siempre devolverá JSON
+    [Authorize]
     public class IngresosController : Controller
     {
         private readonly FinanzasDbContext _context;
@@ -36,8 +39,13 @@ namespace FinanzasPersonales.Api.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)] // Devuelve 200 si es exitoso
         public async Task<ActionResult<IEnumerable<Ingreso>>> GetIngresos()
         {
-            // Devuelve la lista completa de ingresos
-            return await _context.Ingresos.ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var ingresosDelUsuario = await _context.Ingresos
+                                        .Where(g => g.UserId == userId)
+                                        .ToListAsync();
+
+            return Ok(ingresosDelUsuario);
         }
 
         /// <summary>
@@ -50,14 +58,19 @@ namespace FinanzasPersonales.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)] // Devuelve 404 si no lo encuentra
         public async Task<ActionResult<Ingreso>> GetIngreso(int id)
         {
-            var ingreso = await _context.Ingresos.FindAsync(id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Busca un ingreso que coincida con el ID Y que pertenezca al usuario
+            var ingreso = await _context.Ingresos
+                                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
             if (ingreso == null)
             {
-                return NotFound(); // Devuelve un HTTP 404
+                // Si no existe, o no es de este usuario, devuelve 404
+                return NotFound();
             }
 
-            return Ok(ingreso); // Devuelve el ingreso y un HTTP 200 
+            return Ok(ingreso);
         }
 
         /// <summary>
@@ -82,15 +95,14 @@ namespace FinanzasPersonales.Api.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: Si los datos del modelo son incorrectos
         public async Task<ActionResult<Ingreso>> PostIngreso(Ingreso ingreso)
         {
-            // El atributo [ApiController] automáticamente valida el modelo (ingreso).
-            // Si falta un [Required] (ej. Monto), devolverá un 400 BadRequest
-            // antes de llegar a este código.
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            _context.Ingresos.Add(ingreso); // Agrega el ingreso al contexto de EF Core
-            await _context.SaveChangesAsync(); // Guarda los cambios en SQL Server
+            // --- ¡IMPORTANTE! Asignamos el ingreso al usuario logueado ---
+            ingreso.UserId = userId;
 
-            // Devuelve un código 201 (Created) con la ruta para obtener el nuevo recurso
-            // y el objeto 'ingreso' recién creado (que ahora incluye su 'Id').
+            _context.Ingresos.Add(ingreso);
+            await _context.SaveChangesAsync();
+
             return CreatedAtAction("GetIngreso", new { id = ingreso.Id }, ingreso);
         }
 
@@ -108,28 +120,45 @@ namespace FinanzasPersonales.Api.Controllers
         {
             if (id != ingreso.Id)
             {
-                return BadRequest("El ID de la URL no coincide con el ID del cuerpo de la solicitud.");
+                return BadRequest("El ID de la URL no coincide con el ID del cuerpo.");
             }
 
-            _context.Entry(ingreso).State = EntityState.Modified; // Marca el objeto como "modificado"
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Asegurarnos de que el UserId en el objeto a guardar sea el del usuario logueado
+            ingreso.UserId = userId;
+
+            // Verificamos si el ingreso que intenta modificar realmente le pertenece
+            var ingresoExistente = await _context.Ingresos
+                                        .AsNoTracking() // No lo rastreamos, solo lo leemos
+                                        .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+
+            if (ingresoExistente == null)
+            {
+                // Intenta modificar un ingreso que no existe O no es suyo
+                return NotFound();
+            }
+
+            // Ahora sí, marcamos la entidad 'ingreso' (que tiene los datos nuevos) como modificada
+            _context.Entry(ingreso).State = EntityState.Modified;
 
             try
             {
-                await _context.SaveChangesAsync(); // Intenta guardar en la BD
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
                 if (!_context.Ingresos.Any(e => e.Id == id))
                 {
-                    return NotFound(); // No se encontró el gasto
+                    return NotFound();
                 }
                 else
                 {
-                    throw; // Lanza la excepción de concurrencia
+                    throw;
                 }
             }
 
-            return NoContent(); // Devuelve 204 (No Content)
+            return NoContent();
         }
 
         /// <summary>
@@ -142,16 +171,22 @@ namespace FinanzasPersonales.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteIngreso(int id)
         {
-            var ingreso = await _context.Ingresos.FindAsync(id);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Buscamos el ingreso que coincida con el ID Y que sea del usuario
+            var ingreso = await _context.Ingresos
+                                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+
             if (ingreso == null)
             {
-                return NotFound(); // No se encontró
+                // No existe O no es suyo
+                return NotFound();
             }
 
-            _context.Ingresos.Remove(ingreso); // Marca el objeto para eliminar
-            await _context.SaveChangesAsync(); // Ejecuta la eliminación en SQL Server
+            _context.Ingresos.Remove(ingreso);
+            await _context.SaveChangesAsync();
 
-            return NoContent(); // Éxito
+            return NoContent();
         }
     }
 }

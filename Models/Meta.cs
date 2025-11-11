@@ -1,5 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema; // Para [ForeignKey]
+using Microsoft.AspNetCore.Identity; // Para IdentityUser
+
 namespace FinanzasPersonales.Api.Models
 {
     public class Meta
@@ -23,5 +26,11 @@ namespace FinanzasPersonales.Api.Models
         [Required]
         [Column(TypeName = "decimal(18, 2)")]
         public decimal MontoRestante { get; set; }
+
+        [Required]
+        public string UserId { get; set; } // El ID del usuario de la tabla AspNetUsers
+
+        [ForeignKey("UserId")]
+        public virtual IdentityUser User { get; set; } // Propiedad de navegación
     }
 }
