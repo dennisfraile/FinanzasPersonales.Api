@@ -117,14 +117,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
-    // Habilitar dashboard de Hangfire en desarrollo
-    var dashboardEnabled = builder.Configuration.GetValue<bool>("HangfireSettings:DashboardEnabled", true);
-    if (dashboardEnabled)
-    {
-        app.UseHangfireDashboard("/hangfire");
-    }
 }
+
+// Habilitar dashboard de Hangfire (disponible en desarrollo y producción)
+app.UseHangfireDashboard("/hangfire");
 
 app.UseHttpsRedirection();
 
