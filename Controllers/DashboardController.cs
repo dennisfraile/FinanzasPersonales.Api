@@ -1,19 +1,18 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Dtos;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 
 namespace FinanzasPersonales.Api.Controllers
 {
     /// <summary>
-    /// Proporciona endpoints para cálculos de resumen financiero y lógica de negocio.
+    /// API para dashboard y visualización de datos financieros.
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // ¡Todo este controlador está protegido!
+    [Authorize]
     public class DashboardController : ControllerBase
     {
         private readonly FinanzasDbContext _context;
@@ -24,130 +23,260 @@ namespace FinanzasPersonales.Api.Controllers
         }
 
         /// <summary>
-        /// Obtiene el resumen financiero quincenal y mensual para el usuario autenticado.
+        /// Obtiene datos completos del dashboard
         /// </summary>
-        /// <remarks>
-        /// Reemplaza todas las fórmulas del Dashboard de Excel.
-        /// Calcula el saldo disponible basado en la lógica de "vivir con ingresos anteriores"
-        /// y el flujo libre mensual total para el cálculo de metas.
-        /// </remarks>
-        [HttpGet("resumen-quincenal")]
-        [ProducesResponseType(typeof(DashboardResumenDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<ActionResult<DashboardResumenDto>> GetResumenQuincenal()
+        [HttpGet]
+        [ProducesResponseType(typeof(DashboardDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<DashboardDto>> GetDashboard()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-            {
+            if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
-            }
 
-            // --- 1. Definir Rangos de Fechas (Reemplaza las celdas H1-H6) ---
-            var hoy = DateTime.Today;
-            var inicioMesActual = new DateTime(hoy.Year, hoy.Month, 1);
-            var finMesActual = inicioMesActual.AddMonths(1).AddDays(-1);
-            var finQ1Actual = new DateTime(hoy.Year, hoy.Month, 15);
-            var inicioQ2Actual = finQ1Actual.AddDays(1);
+            var mesActual = DateTime.Now.Month;
+            var anoActual = DateTime.Now.Year;
 
-            // Período anterior (para ingresos)
-            var inicioMesAnterior = inicioMesActual.AddMonths(-1);
-            var finQ1Anterior = new DateTime(inicioMesAnterior.Year, inicioMesAnterior.Month, 15);
-            var inicioQ2Anterior = finQ1Anterior.AddDays(1);
-            var finMesAnterior = inicioMesActual.AddDays(-1);
+            // Resumen mes actual
+            var ingresosMes = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha.Month == mesActual && i.Fecha.Year == anoActual)
+                .SumAsync(i => (decimal?)i.Monto) ?? 0;
 
-            // --- 2. Lógica de "Período Actual" (¿Estoy en Q1 o Q2?) ---
-            string periodoActualNombre;
-            DateTime inicioPeriodoGastos;
-            DateTime finPeriodoGastos;
-            DateTime inicioPeriodoIngresos;
-            DateTime finPeriodoIngresos;
+            var gastosMes = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
+                .SumAsync(g => (decimal?)g.Monto) ?? 0;
 
-            if (hoy <= finQ1Actual)
+            var cantTransacciones = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
+                .CountAsync();
+
+            var resumenMes = new ResumenMesActualDto
             {
-                // --- Estamos en Q1 (Gastos 1-15 NOV) ---
-                periodoActualNombre = $"Quincena 1 ({inicioMesActual:dd/MM} - {finQ1Actual:dd/MM})";
-                inicioPeriodoGastos = inicioMesActual;
-                finPeriodoGastos = finQ1Actual;
-
-                // Usamos ingresos de Q2 del mes anterior (Ingresos 16-31 OCT)
-                inicioPeriodoIngresos = inicioQ2Anterior;
-                finPeriodoIngresos = finMesAnterior;
-            }
-            else
-            {
-                // --- Estamos en Q2 (Gastos 16-30 NOV) ---
-                periodoActualNombre = $"Quincena 2 ({inicioQ2Actual:dd/MM} - {finMesActual:dd/MM})";
-                inicioPeriodoGastos = inicioQ2Actual;
-                finPeriodoGastos = finMesActual;
-
-                // Usamos ingresos de Q1 de este mes (Ingresos 1-15 NOV)
-                inicioPeriodoIngresos = inicioMesActual;
-                finPeriodoIngresos = finQ1Actual;
-            }
-
-            // --- 3. Consultar la BD (Reemplaza SUMAR.SI.CONJUNTO) ---
-
-            // 3.1: Ingresos ASIGNADOS para este período
-            var ingresosAsignados = await _context.Ingresos
-                .Where(i => i.UserId == userId &&
-                            i.Fecha >= inicioPeriodoIngresos &&
-                            i.Fecha <= finPeriodoIngresos)
-                .SumAsync(i => i.Monto);
-
-            // 3.2: Gastos PAGADOS en este período
-            var gastosFijosPagados = await _context.Gastos
-                .Where(g => g.UserId == userId &&
-                            g.Tipo == "Fijo" &&
-                            g.Fecha >= inicioPeriodoGastos &&
-                            g.Fecha <= finPeriodoGastos)
-                .SumAsync(g => g.Monto);
-
-            var gastosVariablesPagados = await _context.Gastos
-                .Where(g => g.UserId == userId &&
-                            g.Tipo == "Variable" &&
-                            g.Fecha >= inicioPeriodoGastos &&
-                            g.Fecha <= finPeriodoGastos)
-                .SumAsync(g => g.Monto);
-
-            // --- 4. Calcular el Resumen del Período (El 10% y Saldo) ---
-            var ahorroBase = ingresosAsignados * 0.10m; // ¡Tu lógica del 10%! 'm' es para decimal
-            var saldoDisponible = ingresosAsignados - ahorroBase - gastosFijosPagados - gastosVariablesPagados;
-
-            // --- 5. Calcular Flujo Libre Mensual (Para Metas - Reemplaza E10) ---
-            // Esto es DIFERENTE del saldo. Esto calcula el sobrante REAL del mes actual.
-
-            // 5.1: Ingresos TOTALES del mes actual
-            var ingresosTotalesMes = await _context.Ingresos
-                .Where(i => i.UserId == userId &&
-                            i.Fecha >= inicioMesActual &&
-                            i.Fecha <= finMesActual)
-                .SumAsync(i => i.Monto);
-
-            // 5.2: Gastos TOTALES del mes actual
-            var gastosTotalesMes = await _context.Gastos
-                .Where(g => g.UserId == userId &&
-                            g.Fecha >= inicioMesActual &&
-                            g.Fecha <= finMesActual)
-                .SumAsync(g => g.Monto);
-
-            // 5.3: Ahorro TOTAL del mes actual
-            var ahorroTotalMes = ingresosTotalesMes * 0.10m;
-
-            var flujoLibreMensual = ingresosTotalesMes - gastosTotalesMes - ahorroTotalMes;
-
-            // --- 6. Construir y Devolver el Objeto de Respuesta (DTO) ---
-            var resumenDto = new DashboardResumenDto
-            {
-                PeriodoActual = periodoActualNombre,
-                IngresosAsignados = ingresosAsignados,
-                AhorroBaseCalculado = ahorroBase,
-                GastosFijosPagados = gastosFijosPagados,
-                GastosVariablesPagados = gastosVariablesPagados,
-                SaldoDisponiblePeriodo = saldoDisponible,
-                FlujoLibreMensual = flujoLibreMensual
+                Mes = mesActual,
+                Ano = anoActual,
+                TotalIngresos = ingresosMes,
+                TotalGastos = gastosMes,
+                Balance = ingresosMes - gastosMes,
+                PromedioGastoDiario = DateTime.Now.Day > 0 ? gastosMes / DateTime.Now.Day : 0,
+                CantidadTransacciones = cantTransacciones
             };
 
-            return Ok(resumenDto);
+            // Últimos 6 meses
+            var ultimos6Meses = new List<EvolucionMensualDto>();
+            for (int i = 5; i >= 0; i--)
+            {
+                var fecha = DateTime.Now.AddMonths(-i);
+                var mes = fecha.Month;
+                var ano = fecha.Year;
+
+                var ingresos = await _context.Ingresos
+                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mes && ing.Fecha.Year == ano)
+                    .SumAsync(ing => (decimal?)ing.Monto) ?? 0;
+
+                var gastos = await _context.Gastos
+                    .Where(g => g.UserId == userId && g.Fecha.Month == mes && g.Fecha.Year == ano)
+                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+                ultimos6Meses.Add(new EvolucionMensualDto
+                {
+                    Mes = mes,
+                    Ano = ano,
+                    Periodo = $"{fecha:MMM yyyy}",
+                    TotalIngresos = ingresos,
+                    TotalGastos = gastos,
+                    Balance = ingresos - gastos
+                });
+            }
+
+            // Top categorías (mes actual)
+            var topCategorias = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
+                .GroupBy(g => new { g.CategoriaId, g.Categoria!.Nombre })
+                .Select(group => new GastoPorCategoriaDto
+                {
+                    CategoriaId = group.Key.CategoriaId,
+                    CategoriaNombre = group.Key.Nombre,
+                    TotalGastado = group.Sum(g => g.Monto),
+                    CantidadTransacciones = group.Count(),
+                    PorcentajeDelTotal = 0 // Se calculará después
+                })
+                .OrderByDescending(g => g.TotalGastado)
+                .Take(5)
+                .ToListAsync();
+
+            // Calcular porcentajes
+            var totalGastos = topCategorias.Sum(c => c.TotalGastado);
+            foreach (var cat in topCategorias)
+            {
+                cat.PorcentajeDelTotal = totalGastos > 0 ? (cat.TotalGastado / totalGastos) * 100 : 0;
+            }
+
+            // Presupuestos activos
+            var presupuestos = await _context.Presupuestos
+                .Include(p => p.Categoria)
+                .Where(p => p.UserId == userId && p.MesAplicable == mesActual && p.AnoAplicable == anoActual)
+                .ToListAsync();
+
+            var presupuestosDto = new List<PresupuestoDto>();
+            foreach (var p in presupuestos)
+            {
+                var gastado = await _context.Gastos
+                    .Where(g => g.UserId == userId && g.CategoriaId == p.CategoriaId
+                               && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
+                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+                presupuestosDto.Add(new PresupuestoDto
+                {
+                    Id = p.Id,
+                    CategoriaId = p.CategoriaId,
+                    CategoriaNombre = p.Categoria?.Nombre ?? "",
+                    MontoLimite = p.MontoLimite,
+                    Periodo = p.Periodo,
+                    MesAplicable = p.MesAplicable,
+                    AnoAplicable = p.AnoAplicable,
+                    GastadoActual = gastado,
+                    Disponible = p.MontoLimite - gastado,
+                    PorcentajeUtilizado = p.MontoLimite > 0 ? (gastado / p.MontoLimite) * 100 : 0
+                });
+            }
+
+            var dashboard = new DashboardDto
+            {
+                MesActual = resumenMes,
+                UltimosSeisMeses = ultimos6Meses,
+                TopCategorias = topCategorias,
+                PresupuestosActivos = presupuestosDto
+            };
+
+            return Ok(dashboard);
+        }
+
+        /// <summary>
+        /// Obtiene gráfica de ingresos vs gastos por mes
+        /// </summary>
+        [HttpGet("grafica/ingresos-vs-gastos")]
+        [ProducesResponseType(typeof(GraficaDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<GraficaDto>> GetGraficaIngresosVsGastos([FromQuery] int meses = 6)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            if (meses > 12) meses = 12;
+            if (meses < 1) meses = 1;
+
+            var datos = new List<PuntoGraficaDto>();
+
+            for (int i = meses - 1; i >= 0; i--)
+            {
+                var fecha = DateTime.Now.AddMonths(-i);
+                var mes = fecha.Month;
+                var ano = fecha.Year;
+
+                var ingresos = await _context.Ingresos
+                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mes && ing.Fecha.Year == ano)
+                    .SumAsync(ing => (decimal?)ing.Monto) ?? 0;
+
+                var gastos = await _context.Gastos
+                    .Where(g => g.UserId == userId && g.Fecha.Month == mes && g.Fecha.Year == ano)
+                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+                // Agregar punto para ingresos
+                datos.Add(new PuntoGraficaDto
+                {
+                    Etiqueta = $"{fecha:MMM yyyy} - Ingresos",
+                    Valor = ingresos,
+                    Color = "#4CAF50" // Verde para ingresos
+                });
+
+                // Agregar punto para gastos
+                datos.Add(new PuntoGraficaDto
+                {
+                    Etiqueta = $"{fecha:MMM yyyy} - Gastos",
+                    Valor = gastos,
+                    Color = "#F44336" // Rojo para gastos
+                });
+            }
+
+            var grafica = new GraficaDto
+            {
+                Titulo = "Ingresos vs Gastos",
+                Datos = datos
+            };
+
+            return Ok(grafica);
+        }
+
+        /// <summary>
+        /// Obtiene gráfica de gastos por categoría (gráfica de pie)
+        /// </summary>
+        [HttpGet("grafica/gastos-por-categoria")]
+        [ProducesResponseType(typeof(GraficaDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<GraficaDto>> GetGraficaGastosPorCategoria([FromQuery] int? mes = null, [FromQuery] int? ano = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var mesConsulta = mes ?? DateTime.Now.Month;
+            var anoConsulta = ano ?? DateTime.Now.Year;
+
+            var gastosPorCategoria = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha.Month == mesConsulta && g.Fecha.Year == anoConsulta)
+                .GroupBy(g => new { g.CategoriaId, g.Categoria!.Nombre })
+                .Select(group => new
+                {
+                    Nombre = group.Key.Nombre,
+                    Total = group.Sum(g => g.Monto)
+                })
+                .OrderByDescending(x => x.Total)
+                .ToListAsync();
+
+            var colores = new[] { "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40" };
+            var datos = gastosPorCategoria.Select((cat, index) => new PuntoGraficaDto
+            {
+                Etiqueta = cat.Nombre,
+                Valor = cat.Total,
+                Color = colores[index % colores.Length]
+            }).ToList();
+
+            var grafica = new GraficaDto
+            {
+                Titulo = $"Gastos por Categoría - {new DateTime(anoConsulta, mesConsulta, 1):MMMM yyyy}",
+                Datos = datos
+            };
+
+            return Ok(grafica);
+        }
+
+        /// <summary>
+        /// Obtiene gráfica de progreso de metas
+        /// </summary>
+        [HttpGet("grafica/progreso-metas")]
+        [ProducesResponseType(typeof(GraficaDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<GraficaDto>> GetGraficaProgresoMetas()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var metas = await _context.Metas
+                .Where(m => m.UserId == userId)
+                .ToListAsync();
+
+            var datos = metas.Select(m => new PuntoGraficaDto
+            {
+                Etiqueta = m.Metas,
+                Valor = m.MontoTotal > 0 ? (m.AhorroActual / m.MontoTotal) * 100 : 0,
+                Color = m.AhorroActual >= m.MontoTotal ? "#4CAF50" : "#2196F3"
+            }).ToList();
+
+            var grafica = new GraficaDto
+            {
+                Titulo = "Progreso de Metas (%)",
+                Datos = datos
+            };
+
+            return Ok(grafica);
         }
     }
 }

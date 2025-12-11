@@ -51,6 +51,57 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("Categorias");
                 });
 
+            modelBuilder.Entity("FinanzasPersonales.Api.Models.ConfiguracionUsuario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DiaInicioMes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Idioma")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<string>("Moneda")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("MostrarSaldoInicial")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SimboloMoneda")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
+                    b.Property<string>("Tema")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ConfiguracionesUsuario");
+                });
+
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
                 {
                     b.Property<int>("Id")
@@ -151,6 +202,52 @@ namespace FinanzasPersonales.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Metas");
+                });
+
+            modelBuilder.Entity("FinanzasPersonales.Api.Models.Notificacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("EmailEnviado")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaEmailEnviado")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Leida")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Mensaje")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notificaciones");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Presupuesto", b =>
@@ -398,6 +495,17 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("FinanzasPersonales.Api.Models.ConfiguracionUsuario", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
                 {
                     b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
@@ -437,6 +545,17 @@ namespace FinanzasPersonales.Api.Migrations
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Meta", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FinanzasPersonales.Api.Models.Notificacion", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
                         .WithMany()

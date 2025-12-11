@@ -59,20 +59,77 @@
             <param name="id">El ID de la categoría a eliminar.</param>
             <returns>Un 204 (Sin Contenido) si fue exitoso.</returns>
         </member>
-        <member name="T:FinanzasPersonales.Api.Controllers.DashboardController">
+        <member name="T:FinanzasPersonales.Api.Controllers.ConfiguracionController">
             <summary>
-            Proporciona endpoints para cálculos de resumen financiero y lógica de negocio.
+            API para gestión de configuración del usuario.
             </summary>
         </member>
-        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetResumenQuincenal">
+        <member name="M:FinanzasPersonales.Api.Controllers.ConfiguracionController.GetConfiguracion">
             <summary>
-            Obtiene el resumen financiero quincenal y mensual para el usuario autenticado.
+            Obtiene la configuración del usuario
             </summary>
-            <remarks>
-            Reemplaza todas las fórmulas del Dashboard de Excel.
-            Calcula el saldo disponible basado en la lógica de "vivir con ingresos anteriores"
-            y el flujo libre mensual total para el cálculo de metas.
-            </remarks>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ConfiguracionController.UpdateConfiguracion(FinanzasPersonales.Api.Dtos.ConfiguracionUsuarioDto)">
+            <summary>
+            Actualiza la configuración del usuario
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ConfiguracionController.RestablecerConfiguracion">
+            <summary>
+            Restablece la configuración a valores por defecto
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.DashboardController">
+            <summary>
+            API para dashboard y visualización de datos financieros.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetDashboard">
+            <summary>
+            Obtiene datos completos del dashboard
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetGraficaIngresosVsGastos(System.Int32)">
+            <summary>
+            Obtiene gráfica de ingresos vs gastos por mes
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetGraficaGastosPorCategoria(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Obtiene gráfica de gastos por categoría (gráfica de pie)
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.DashboardController.GetGraficaProgresoMetas">
+            <summary>
+            Obtiene gráfica de progreso de metas
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.ExportController">
+            <summary>
+            API para exportación de datos financieros en diferentes formatos.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ExportController.ExportToExcel(FinanzasPersonales.Api.Dtos.ExportRequestDto)">
+            <summary>
+            Exporta datos a formato Excel (.xlsx)
+            </summary>
+            <param name="request">Parámetros de exportación</param>
+            <returns>Archivo Excel con los datos solicitados</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ExportController.ExportToPdf(FinanzasPersonales.Api.Dtos.ExportRequestDto)">
+            <summary>
+            Exporta datos a formato PDF
+            </summary>
+            <param name="request">Parámetros de exportación</param>
+            <returns>Archivo PDF con los datos solicitados</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ExportController.ExportBackup(System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Crea backup completo de datos en formato JSON
+            </summary>
+            <param name="desde">Fecha inicial opcional para filtrar datos</param>
+            <param name="hasta">Fecha final opcional para filtrar datos</param>
+            <returns>Archivo JSON con backup de datos</returns>
         </member>
         <member name="T:FinanzasPersonales.Api.Controllers.GastosController">
             <summary>
@@ -259,6 +316,32 @@
             <param name="id">El ID de la meta a eliminar.</param>
             <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
         </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.NotificacionesController">
+            <summary>
+            API para gestión de notificaciones del usuario.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.NotificacionesController.GetNotificaciones(System.Boolean)">
+            <summary>
+            Obtiene las notificaciones del usuario
+            </summary>
+            <param name="soloNoLeidas">Filtrar solo no leídas</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.NotificacionesController.MarcarComoLeida(System.Int32)">
+            <summary>
+            Marca una notificación como leída
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.NotificacionesController.GetConfiguracion">
+            <summary>
+            Obtiene la configuración de notificaciones del usuario (simulado)
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.NotificacionesController.UpdateConfiguracion(FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto)">
+            <summary>
+            Actualiza la configuración de notificaciones (simulado)
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Controllers.PerfilController">
             <summary>
             API para gestión del perfil de usuario.
@@ -370,14 +453,129 @@
             DTO para comparar dos períodos financieros.
             </summary>
         </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto">
+            <summary>
+            DTO para configuración de notificaciones del usuario.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto.AlertasPresupuesto">
+            <summary>
+            Recibir alertas cuando presupuesto supera umbral
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto.UmbralPresupuesto">
+            <summary>
+            Porcentaje de presupuesto para activar alerta (ej: 80, 90)
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto.AlertasMetas">
+            <summary>
+            Recibir alertas de metas próximas a vencer
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto.DiasAntesMeta">
+            <summary>
+            Días antes del vencimiento para enviar alerta
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ConfiguracionNotificacionesDto.Email">
+            <summary>
+            Email del usuario para notificaciones
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ConfiguracionUsuarioDto">
+            <summary>
+            DTO para configuración del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.DashboardDto">
+            <summary>
+            DTO para dashboard completo con todos los widgets.
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Dtos.EvolucionMensualDto">
             <summary>
             DTO para reportes de evolución mensual de ingresos y gastos.
             </summary>
         </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ExportRequestDto">
+            <summary>
+            DTO para solicitar exportación de datos.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ExportRequestDto.Formato">
+            <summary>
+            Formato de exportación: "excel", "pdf", "json"
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ExportRequestDto.Desde">
+            <summary>
+            Fecha inicial del rango (opcional, por defecto inicio de mes actual)
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ExportRequestDto.Hasta">
+            <summary>
+            Fecha final del rango (opcional, por defecto fecha actual)
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.ExportRequestDto.Incluir">
+            <summary>
+            Tipos de datos a incluir en la exportación
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Dtos.GastoPorCategoriaDto">
             <summary>
             DTO para reportes de gastos agrupados por categoría.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.GraficaDto">
+            <summary>
+            DTO para datos de gráfica con título y puntos.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.MetaDto">
+            <summary>
+            DTO para metas financieras.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.NotificacionDto">
+            <summary>
+            DTO para lectura de notificaciones.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.Id">
+            <summary>
+            Identificador único de la notificación.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.Tipo">
+            <summary>
+            Tipo de notificación (ej: Alerta, Recordatorio, etc.).
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.Titulo">
+            <summary>
+            Título de la notificación.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.Mensaje">
+            <summary>
+            Mensaje o contenido de la notificación.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.FechaCreacion">
+            <summary>
+            Fecha y hora de creación de la notificación.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.Leida">
+            <summary>
+            Indica si la notificación ha sido leída.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Dtos.NotificacionDto.EmailEnviado">
+            <summary>
+            Indica si se ha enviado un email con esta notificación.
             </summary>
         </member>
         <member name="T:FinanzasPersonales.Api.Dtos.PaginatedResponseDto`1">
@@ -405,9 +603,39 @@
             DTO para actualizar un presupuesto existente.
             </summary>
         </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PuntoGraficaDto">
+            <summary>
+            DTO para representar un punto en una gráfica.
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Dtos.ResumenGeneralDto">
             <summary>
             DTO para resumen general de estadísticas financieras.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ResumenMesActualDto">
+            <summary>
+            DTO para resumen del mes actual.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Jobs.NotificacionesJob">
+            <summary>
+            Job de Hangfire que verifica alertas de presupuestos y metas diariamente.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Jobs.NotificacionesJob.VerificarAlertasPresupuestosAsync">
+            <summary>
+            Verifica presupuestos cercanos al límite y envía alertas
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Jobs.NotificacionesJob.VerificarAlertasMetasAsync">
+            <summary>
+            Verifica metas próximas a vencer y envía recordatorios
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Jobs.NotificacionesJob.EjecutarVerificacionesAsync">
+            <summary>
+            Método principal que ejecuta todas las verificaciones
             </summary>
         </member>
         <member name="T:FinanzasPersonales.Api.Migrations.InitialCreate">
@@ -422,9 +650,128 @@
         <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
+        <member name="T:FinanzasPersonales.Api.Migrations.AgregarNotificaciones">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarNotificaciones.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarNotificaciones.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarNotificaciones.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:FinanzasPersonales.Api.Migrations.AgregarConfiguracionUsuario">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarConfiguracionUsuario.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarConfiguracionUsuario.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="M:FinanzasPersonales.Api.Migrations.AgregarConfiguracionUsuario.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
+            <inheritdoc />
+        </member>
+        <member name="T:FinanzasPersonales.Api.Models.ConfiguracionUsuario">
+            <summary>
+            Configuración personalizada del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Models.Notificacion">
+            <summary>
+            Representa una notificación para el usuario.
+            </summary>
+        </member>
+        <member name="P:FinanzasPersonales.Api.Models.Notificacion.Tipo">
+            <summary>
+            Tipo de notificación: "PresupuestoAlerta", "MetaProxima", "MetaCumplida"
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Models.Presupuesto">
             <summary>
             Representa un presupuesto establecido para una categoría específica.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.EmailService">
+            <summary>
+            Implementación del servicio de envío de emails usando MailKit.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.ExportService">
+            <summary>
+            Implementación del servicio de exportación de datos.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.IEmailService">
+            <summary>
+            Servicio para envío de emails.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IEmailService.SendAlertaPresupuestoAsync(System.String,System.String,System.Decimal,System.Decimal,System.Decimal)">
+            <summary>
+            Envía alerta cuando un presupuesto supera el umbral configurado
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IEmailService.SendRecordatorioMetaAsync(System.String,System.String,System.DateTime,System.Int32)">
+            <summary>
+            Envía recordatorio de meta próxima a vencer
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IEmailService.SendMetaCumplidaAsync(System.String,System.String,System.Decimal)">
+            <summary>
+            Envía felicitación por meta cumplida
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.IExportService">
+            <summary>
+            Servicio para exportación de datos en diferentes formatos.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IExportService.ExportToExcelAsync(System.String,System.DateTime,System.DateTime,System.Collections.Generic.List{System.String})">
+            <summary>
+            Exporta datos del usuario a formato Excel (.xlsx)
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IExportService.ExportToPdfAsync(System.String,System.DateTime,System.DateTime,System.Collections.Generic.List{System.String})">
+            <summary>
+            Exporta datos del usuario a formato PDF
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IExportService.ExportToJsonAsync(System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Exporta backup completo de datos del usuario en formato JSON
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.INotificacionService">
+            <summary>
+            Servicio para gestión de notificaciones.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.INotificacionService.CrearNotificacionAsync(System.String,System.String,System.String,System.String)">
+            <summary>
+            Crea una nueva notificación en la base de datos
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.INotificacionService.MarcarComoLeidaAsync(System.Int32,System.String)">
+            <summary>
+            Marca una notificación como leída
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.INotificacionService.ObtenerNoLeidasAsync(System.String)">
+            <summary>
+            Obtiene notificaciones no leídas del usuario
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.INotificacionService.ObtenerTodasAsync(System.String,System.Boolean)">
+            <summary>
+            Obtiene todas las notificaciones del usuario
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.NotificacionService">
+            <summary>
+            Implementación del servicio de notificaciones.
             </summary>
         </member>
     </members>

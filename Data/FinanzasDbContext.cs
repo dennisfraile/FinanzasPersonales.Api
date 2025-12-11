@@ -43,5 +43,7 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Meta> Metas { get; set; }
         public DbSet<Categoria> Categorias { get; set; }
         public DbSet<Presupuesto> Presupuestos { get; set; }
+        public DbSet<Notificacion> Notificaciones { get; set; }
+        public DbSet<ConfiguracionUsuario> ConfiguracionesUsuario { get; set; }
     }
 }
