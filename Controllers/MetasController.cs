@@ -23,10 +23,12 @@ namespace FinanzasPersonales.Api.Controllers
     public class MetasController : Controller
     {
         private readonly FinanzasDbContext _context;
+        private readonly Services.IMetasService _metasService;
 
-        public MetasController(FinanzasDbContext context)
+        public MetasController(FinanzasDbContext context, Services.IMetasService metasService)
         {
             _context = context;
+            _metasService = metasService;
         }
 
         // --- ENDPOINTS (MÉTODOS) ---
@@ -190,5 +192,74 @@ namespace FinanzasPersonales.Api.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Obtiene el progreso detallado de una meta específica
+        /// </summary>
+        /// <param name="id">ID de la meta</param>
+        [HttpGet("{id}/progreso")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<object>> GetProgresoMeta(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            try
+            {
+                var progreso = await _metasService.CalcularProgresoAsync(id, userId!);
+                return Ok(progreso);
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Meta no encontrada");
+            }
+        }
+
+        /// <summary>
+        /// Registra un abono manual a una meta
+        /// </summary>
+        /// <param name="id">ID de la meta</param>
+        /// <param name="request">Objeto con el monto a abonar</param>
+        [HttpPost("{id}/abonar")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AbonarMeta(int id, [FromBody] AbonoRequest request)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            try
+            {
+                var resultado = await _metasService.AbonarMetaAsync(id, userId!, request.Monto);
+
+                if (!resultado)
+                    return NotFound("Meta no encontrada");
+
+                return Ok(new { mensaje = "Abono registrado exitosamente", monto = request.Monto });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Obtiene proyecciones de cumplimiento de todas las metas del usuario
+        /// </summary>
+        [HttpGet("proyecciones")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<object>>> GetProyecciones()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var proyecciones = await _metasService.ObtenerProyeccionesAsync(userId!);
+            return Ok(proyecciones);
+        }
+    }
+
+    /// <summary>
+    /// Clase para recibir el monto de abono
+    /// </summary>
+    public class AbonoRequest
+    {
+        public decimal Monto { get; set; }
     }
 }

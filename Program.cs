@@ -71,6 +71,9 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IExportService, Finan
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IEmailService, FinanzasPersonales.Api.Services.EmailService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.INotificacionService, FinanzasPersonales.Api.Services.NotificacionService>();
 
+// Registrar servicio de metas mejoradas
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IMetasService, FinanzasPersonales.Api.Services.MetasService>();
+
 // Registrar job de notificaciones
 builder.Services.AddScoped<NotificacionesJob>();
 

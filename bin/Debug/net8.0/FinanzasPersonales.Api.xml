@@ -316,6 +316,29 @@
             <param name="id">El ID de la meta a eliminar.</param>
             <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
         </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.GetProgresoMeta(System.Int32)">
+            <summary>
+            Obtiene el progreso detallado de una meta específica
+            </summary>
+            <param name="id">ID de la meta</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.AbonarMeta(System.Int32,FinanzasPersonales.Api.Controllers.AbonoRequest)">
+            <summary>
+            Registra un abono manual a una meta
+            </summary>
+            <param name="id">ID de la meta</param>
+            <param name="request">Objeto con el monto a abonar</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.MetasController.GetProyecciones">
+            <summary>
+            Obtiene proyecciones de cumplimiento de todas las metas del usuario
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.AbonoRequest">
+            <summary>
+            Clase para recibir el monto de abono
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Controllers.NotificacionesController">
             <summary>
             API para gestión de notificaciones del usuario.
@@ -744,6 +767,26 @@
             Exporta backup completo de datos del usuario en formato JSON
             </summary>
         </member>
+        <member name="T:FinanzasPersonales.Api.Services.IMetasService">
+            <summary>
+            Servicio para gestión avanzada de metas financieras.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IMetasService.CalcularProgresoAsync(System.Int32,System.String)">
+            <summary>
+            Calcula el progreso detallado de una meta
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IMetasService.AbonarMetaAsync(System.Int32,System.String,System.Decimal)">
+            <summary>
+            Registra un abono manual a una meta
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Services.IMetasService.ObtenerProyeccionesAsync(System.String)">
+            <summary>
+            Obtiene proyecciones de cumplimiento de metas
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Services.INotificacionService">
             <summary>
             Servicio para gestión de notificaciones.
@@ -767,6 +810,11 @@
         <member name="M:FinanzasPersonales.Api.Services.INotificacionService.ObtenerTodasAsync(System.String,System.Boolean)">
             <summary>
             Obtiene todas las notificaciones del usuario
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Services.MetasService">
+            <summary>
+            Implementación del servicio de metas mejoradas.
             </summary>
         </member>
         <member name="T:FinanzasPersonales.Api.Services.NotificacionService">
