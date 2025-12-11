@@ -14,8 +14,10 @@ namespace FinanzasPersonales.Api.Models
         public DateTime Fecha { get; set; }
 
         [Required]
-        [StringLength(100)] // Límite de 100 caracteres
-        public string Fuente { get; set; }
+        public int CategoriaId { get; set; } // La llave foránea
+
+        [ForeignKey("CategoriaId")]
+        public virtual Categoria Categoria { get; set; } // Propiedad de navegación
 
         [Required]
         [Column(TypeName = "decimal(18, 2)")] 

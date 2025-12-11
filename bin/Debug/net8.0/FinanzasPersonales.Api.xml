@@ -14,6 +14,51 @@
             Inicia sesión (autentica) un usuario y devuelve un token JWT.
             </summary>
         </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.CategoriasController">
+            <summary>
+            API para gestionar las categorías de Ingreso y Gasto de un usuario.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.CategoriasController.GetCategorias">
+            <summary>
+            Obtiene una lista de TODAS las categorías (Ingresos y Gastos)
+            pertenecientes al usuario autenticado.
+            </summary>
+            <returns>Una lista de las categorías del usuario.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.CategoriasController.GetCategoria(System.Int32)">
+            <summary>
+            Obtiene una categoría específica por su ID.
+            </summary>
+            <param name="id">El ID de la categoría a buscar.</param>
+            <returns>La categoría, o 404 si no se encuentra o no pertenece al usuario.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.CategoriasController.PostCategoria(FinanzasPersonales.Api.Models.Categoria)">
+            <summary>
+            Crea una nueva categoría (Ingreso o Gasto) para el usuario autenticado.
+            </summary>
+            <param name="categoria">El objeto Categoría a crear. El UserId se asignará automáticamente.</param>
+            <returns>La nueva categoría creada con su ID.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.CategoriasController.PutCategoria(System.Int32,FinanzasPersonales.Api.Models.Categoria)">
+            <summary>
+            Actualiza el nombre o tipo de una categoría existente.
+            </summary>
+            <param name="id">El ID de la categoría a modificar.</param>
+            <param name="categoria">El objeto Categoría con los datos actualizados.</param>
+            <returns>Un 204 (Sin Contenido) si fue exitoso.</returns>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.CategoriasController.DeleteCategoria(System.Int32)">
+            <summary>
+            Elimina una categoría del usuario.
+            </summary>
+            <remarks>
+            NOTA: Esto fallará si la categoría ya está siendo usada por algún Gasto o Ingreso
+            (debido a la regla 'ON DELETE RESTRICT' que configuramos en el DbContext).
+            </remarks>
+            <param name="id">El ID de la categoría a eliminar.</param>
+            <returns>Un 204 (Sin Contenido) si fue exitoso.</returns>
+        </member>
         <member name="T:FinanzasPersonales.Api.Controllers.DashboardController">
             <summary>
             Proporciona endpoints para cálculos de resumen financiero y lógica de negocio.
@@ -40,11 +85,22 @@
             </summary>
             <param name="context">El contexto de la base de datos (inyectado por ASP.NET).</param>
         </member>
-        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.GetGastos">
+        <member name="M:FinanzasPersonales.Api.Controllers.GastosController.GetGastos(System.Nullable{System.Int32},System.String,System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.String,System.String,System.String,System.Int32,System.Int32)">
             <summary>
-            Obtiene una lista completa de todos los gastos registrados.
+            Obtiene una lista de gastos con filtros y paginación.
             </summary>
-            <returns>Una lista de objetos Gasto.</returns>
+            <param name="categoriaId">Filtrar por categoría específica</param>
+            <param name="tipo">Filtrar por tipo: Fijo o Variable</param>
+            <param name="desde">Fecha inicial del rango</param>
+            <param name="hasta">Fecha final del rango</param>
+            <param name="montoMin">Monto mínimo</param>
+            <param name="montoMax">Monto máximo</param>
+            <param name="descripcionContiene">Buscar en descripción</param>
+            <param name="ordenarPor">Campo para ordenar: fecha o monto. Default: fecha</param>
+            <param name="ordenDireccion">Dirección de ordenamiento: asc o desc. Default: desc</param>
+            <param name="pagina">Número de página. Default: 1</param>
+            <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
+            <returns>Lista paginada de gastos</returns>
         </member>
         <member name="M:FinanzasPersonales.Api.Controllers.GastosController.GetGasto(System.Int32)">
             <summary>
@@ -94,11 +150,20 @@
             API para gestionar todos los gastos de la aplicación.
             </summary>
         </member>
-        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.GetIngresos">
+        <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.GetIngresos(System.Nullable{System.Int32},System.Nullable{System.DateTime},System.Nullable{System.DateTime},System.Nullable{System.Decimal},System.Nullable{System.Decimal},System.String,System.String,System.Int32,System.Int32)">
             <summary>
-            Obtiene una lista completa de todos los ingresos registrados.
+            Obtiene una lista de ingresos con filtros y paginación.
             </summary>
-            <returns>Una lista de objetos Ingreso.</returns>
+            <param name="categoriaId">Filtrar por categoría específica</param>
+            <param name="desde">Fecha inicial del rango</param>
+            <param name="hasta">Fecha final del rango</param>
+            <param name="montoMin">Monto mínimo</param>
+            <param name="montoMax">Monto máximo</param>
+            <param name="ordenarPor">Campo para ordenar: fecha o monto. Default: fecha</param>
+            <param name="ordenDireccion">Dirección de ordenamiento: asc o desc. Default: desc</param>
+            <param name="pagina">Número de página. Default: 1</param>
+            <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
+            <returns>Lista paginada de ingresos</returns>
         </member>
         <member name="M:FinanzasPersonales.Api.Controllers.IngresosController.GetIngreso(System.Int32)">
             <summary>
@@ -194,6 +259,157 @@
             <param name="id">El ID de la meta a eliminar.</param>
             <returns>Un código 204 (Sin Contenido) si la eliminación fue exitosa.</returns>
         </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.PerfilController">
+            <summary>
+            API para gestión del perfil de usuario.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PerfilController.GetPerfil">
+            <summary>
+            Obtiene la información del perfil del usuario autenticado.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PerfilController.ActualizarPerfil(FinanzasPersonales.Api.Dtos.ActualizarPerfilDto)">
+            <summary>
+            Actualiza el email del usuario.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PerfilController.CambiarPassword(FinanzasPersonales.Api.Dtos.CambiarPasswordDto)">
+            <summary>
+            Cambia la contraseña del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.PresupuestosController">
+            <summary>
+            API para gestión de presupuestos por categoría.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.GetPresupuestos(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Obtiene todos los presupuestos del usuario con información de progreso.
+            </summary>
+            <param name="mes">Filtro opcional por mes (1-12)</param>
+            <param name="ano">Filtro opcional por año</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.GetPresupuesto(System.Int32)">
+            <summary>
+            Obtiene un presupuesto específico por ID.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.PostPresupuesto(FinanzasPersonales.Api.Dtos.PresupuestoCreateDto)">
+            <summary>
+            Crea un nuevo presupuesto.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.PutPresupuesto(System.Int32,FinanzasPersonales.Api.Dtos.PresupuestoUpdateDto)">
+            <summary>
+            Actualiza un presupuesto existente.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.DeletePresupuesto(System.Int32)">
+            <summary>
+            Elimina un presupuesto.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.PresupuestosController.GetAlertasPresupuesto">
+            <summary>
+            Obtiene presupuestos que están cerca del límite (>80%).
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Controllers.ReportesController">
+            <summary>
+            API para gestión de reportes y anál íticas financieras.
+            </summary>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ReportesController.GetGastosPorCategoria(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Obtiene un reporte de gastos agrupados por categoría para un mes específico.
+            </summary>
+            <param name="mes">Mes a analizar (1-12). Default: mes actual</param>
+            <param name="ano">Año a analizar. Default: año actual</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ReportesController.GetEvolucionMensual(System.Int32)">
+            <summary>
+            Obtiene la evolución mensual de ingresos y gastos.
+            </summary>
+            <param name="meses">Cantidad de meses hacia atrás a analizar. Default: 6, Máximo: 12</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ReportesController.GetComparativaPeriodos(System.Nullable{System.Int32},System.Nullable{System.Int32},System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Compara dos períodos financieros específicos.
+            </summary>
+            <param name="mesActual">Mes del período actual (1-12)</param>
+            <param name="anoActual">Año del período actual</param>
+            <param name="mesAnterior">Mes del período anterior (1-12)</param>
+            <param name="anoAnterior">Año del período anterior</param>
+        </member>
+        <member name="M:FinanzasPersonales.Api.Controllers.ReportesController.GetResumenGeneral(System.Nullable{System.DateTime},System.Nullable{System.DateTime})">
+            <summary>
+            Obtiene estadísticas generales para un rango de fechas.
+            </summary>
+            <param name="desde">Fecha inicial del rango. Default: inicio del año actual</param>
+            <param name="hasta">Fecha final del rango. Default: fecha actual</param>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Data.FinanzasDbContextFactory">
+            <summary>
+            Factory para crear el DbContext en tiempo de diseño (para migraciones).
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ActualizarPerfilDto">
+            <summary>
+            DTO para actualizar el perfil del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.CambiarPasswordDto">
+            <summary>
+            DTO para cambiar la contraseña del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ComparativaPeriodosDto">
+            <summary>
+            DTO para comparar dos períodos financieros.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.EvolucionMensualDto">
+            <summary>
+            DTO para reportes de evolución mensual de ingresos y gastos.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.GastoPorCategoriaDto">
+            <summary>
+            DTO para reportes de gastos agrupados por categoría.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PaginatedResponseDto`1">
+            <summary>
+            DTO genérico para respuestas paginadas.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PerfilUsuarioDto">
+            <summary>
+            DTO para información del perfil del usuario.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PresupuestoCreateDto">
+            <summary>
+            DTO para crear un nuevo presupuesto.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PresupuestoDto">
+            <summary>
+            DTO para mostrar información de un presupuesto con cálculos.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.PresupuestoUpdateDto">
+            <summary>
+            DTO para actualizar un presupuesto existente.
+            </summary>
+        </member>
+        <member name="T:FinanzasPersonales.Api.Dtos.ResumenGeneralDto">
+            <summary>
+            DTO para resumen general de estadísticas financieras.
+            </summary>
+        </member>
         <member name="T:FinanzasPersonales.Api.Migrations.InitialCreate">
             <inheritdoc />
         </member>
@@ -206,29 +422,10 @@
         <member name="M:FinanzasPersonales.Api.Migrations.InitialCreate.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
             <inheritdoc />
         </member>
-        <member name="T:FinanzasPersonales.Api.Migrations.AddIdentityTables">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddIdentityTables.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="T:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.Up(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.Down(Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder)">
-            <inheritdoc />
-        </member>
-        <member name="M:FinanzasPersonales.Api.Migrations.AddUserForeignKeyToModels.BuildTargetModel(Microsoft.EntityFrameworkCore.ModelBuilder)">
-            <inheritdoc />
+        <member name="T:FinanzasPersonales.Api.Models.Presupuesto">
+            <summary>
+            Representa un presupuesto establecido para una categoría específica.
+            </summary>
         </member>
     </members>
 </doc>

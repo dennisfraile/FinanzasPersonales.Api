@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Models;
+using FinanzasPersonales.Api.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization; // Para [Authorize]
 using System.Security.Claims; // Para obtener el ID del usuario desde el token
@@ -32,20 +33,91 @@ namespace FinanzasPersonales.Api.Controllers
         // --- ENDPOINTS (MÉTODOS) ---
 
         /// <summary>
-        /// Obtiene una lista completa de todos los ingresos registrados.
+        /// Obtiene una lista de ingresos con filtros y paginación.
         /// </summary>
-        /// <returns>Una lista de objetos Ingreso.</returns>
+        /// <param name="categoriaId">Filtrar por categoría específica</param>
+        /// <param name="desde">Fecha inicial del rango</param>
+        /// <param name="hasta">Fecha final del rango</param>
+        /// <param name="montoMin">Monto mínimo</param>
+        /// <param name="montoMax">Monto máximo</param>
+        /// <param name="ordenarPor">Campo para ordenar: fecha o monto. Default: fecha</param>
+        /// <param name="ordenDireccion">Dirección de ordenamiento: asc o desc. Default: desc</param>
+        /// <param name="pagina">Número de página. Default: 1</param>
+        /// <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
+        /// <returns>Lista paginada de ingresos</returns>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)] // Devuelve 200 si es exitoso
-        public async Task<ActionResult<IEnumerable<Ingreso>>> GetIngresos()
+        [ProducesResponseType(typeof(PaginatedResponseDto<Ingreso>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResponseDto<Ingreso>>> GetIngresos(
+            [FromQuery] int? categoriaId = null,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null,
+            [FromQuery] decimal? montoMin = null,
+            [FromQuery] decimal? montoMax = null,
+            [FromQuery] string ordenarPor = "fecha",
+            [FromQuery] string ordenDireccion = "desc",
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamañoPagina = 50)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var ingresosDelUsuario = await _context.Ingresos
-                                        .Where(g => g.UserId == userId)
-                                        .ToListAsync();
+            // Limitar tamaño de página
+            tamañoPagina = Math.Min(tamañoPagina, 100);
+            pagina = Math.Max(pagina, 1);
 
-            return Ok(ingresosDelUsuario);
+            var query = _context.Ingresos
+                .Where(i => i.UserId == userId)
+                .Include(i => i.Categoria)
+                .AsQueryable();
+
+            // Aplicar filtros
+            if (categoriaId.HasValue)
+                query = query.Where(i => i.CategoriaId == categoriaId.Value);
+
+            if (desde.HasValue)
+                query = query.Where(i => i.Fecha >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(i => i.Fecha <= hasta.Value);
+
+            if (montoMin.HasValue)
+                query = query.Where(i => i.Monto >= montoMin.Value);
+
+            if (montoMax.HasValue)
+                query = query.Where(i => i.Monto <= montoMax.Value);
+
+            // Ordenamiento
+            query = ordenarPor.ToLower() switch
+            {
+                "monto" => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(i => i.Monto)
+                    : query.OrderByDescending(i => i.Monto),
+                _ => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(i => i.Fecha)
+                    : query.OrderByDescending(i => i.Fecha)
+            };
+
+            // Contar total antes de paginar
+            var totalItems = await query.CountAsync();
+            var totalPaginas = (int)Math.Ceiling(totalItems / (double)tamañoPagina);
+
+            // Aplicar paginación
+            var items = await query
+                .Skip((pagina - 1) * tamañoPagina)
+                .Take(tamañoPagina)
+                .ToListAsync();
+
+            var resultado = new PaginatedResponseDto<Ingreso>
+            {
+                Items = items,
+                PaginaActual = pagina,
+                TamañoPagina = tamañoPagina,
+                TotalItems = totalItems,
+                TotalPaginas = totalPaginas,
+                TienePaginaAnterior = pagina > 1,
+                TienePaginaSiguiente = pagina < totalPaginas
+            };
+
+            return Ok(resultado);
         }
 
         /// <summary>

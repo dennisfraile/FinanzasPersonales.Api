@@ -14,18 +14,18 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // 1. Añadimos la definición de seguridad
+    // 1. Aï¿½adimos la definiciï¿½n de seguridad
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = SecuritySchemeType.Http, // Usamos autenticación HTTP
+        Type = SecuritySchemeType.Http, // Usamos autenticaciï¿½n HTTP
         Scheme = "Bearer",             // El esquema es "Bearer"
         BearerFormat = "JWT",          // El formato es JWT
-        In = ParameterLocation.Header, // El token irá en la cabecera
+        In = ParameterLocation.Header, // El token irï¿½ en la cabecera
         Description = "Por favor, introduce tu token JWT con el prefijo Bearer. Ejemplo: 'Bearer eyJhbGciOi...'"
     });
 
-    // 2. Añadimos el requisito de seguridad
+    // 2. Aï¿½adimos el requisito de seguridad
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -42,24 +42,24 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Añadir servicios de EF Core y SQL Server
+// Aï¿½adir servicios de EF Core y SQL Server
 builder.Services.AddDbContext<FinanzasDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configurar ASP.NET Core Identity
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {
-    // Opciones de contraseña (las hacemos flexibles para desarrollo)
+    // Opciones de contraseï¿½a (las hacemos flexibles para desarrollo)
     options.Password.RequireDigit = false;
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6; // Contraseña de mínimo 6 caracteres
+    options.Password.RequiredLength = 6; // Contraseï¿½a de mï¿½nimo 6 caracteres
 })
 .AddEntityFrameworkStores<FinanzasDbContext>() // Le dice a Identity que use nuestro DbContext
-.AddDefaultTokenProviders(); // Añade los proveedores para generar tokens (ej. reseteo de contraseña)
+.AddDefaultTokenProviders(); // Aï¿½ade los proveedores para generar tokens (ej. reseteo de contraseï¿½a)
 
-// Configurar Autenticación y JWT Bearer
+// Configurar Autenticaciï¿½n y JWT Bearer
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -81,8 +81,8 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-app.UseAuthentication(); // 1. Verifica quién eres (autenticación)
-app.UseAuthorization();  // 2. Verifica qué permisos tienes (autorización)
+app.UseAuthentication(); // 1. Verifica quiï¿½n eres (autenticaciï¿½n)
+app.UseAuthorization();  // 2. Verifica quï¿½ permisos tienes (autorizaciï¿½n)
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -98,3 +98,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+

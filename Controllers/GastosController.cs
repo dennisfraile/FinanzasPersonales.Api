@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Models;
+using FinanzasPersonales.Api.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization; // Para [Authorize]
 using System.Security.Claims; // Para obtener el ID del usuario desde el token
@@ -36,20 +37,101 @@ namespace FinanzasPersonales.Api.Controllers
         // --- ENDPOINTS (MÉTODOS) ---
 
         /// <summary>
-        /// Obtiene una lista completa de todos los gastos registrados.
+        /// Obtiene una lista de gastos con filtros y paginación.
         /// </summary>
-        /// <returns>Una lista de objetos Gasto.</returns>
+        /// <param name="categoriaId">Filtrar por categoría específica</param>
+        /// <param name="tipo">Filtrar por tipo: Fijo o Variable</param>
+        /// <param name="desde">Fecha inicial del rango</param>
+        /// <param name="hasta">Fecha final del rango</param>
+        /// <param name="montoMin">Monto mínimo</param>
+        /// <param name="montoMax">Monto máximo</param>
+        /// <param name="descripcionContiene">Buscar en descripción</param>
+        /// <param name="ordenarPor">Campo para ordenar: fecha o monto. Default: fecha</param>
+        /// <param name="ordenDireccion">Dirección de ordenamiento: asc o desc. Default: desc</param>
+        /// <param name="pagina">Número de página. Default: 1</param>
+        /// <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
+        /// <returns>Lista paginada de gastos</returns>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)] // Devuelve 200 si es exitoso
-        public async Task<ActionResult<IEnumerable<Gasto>>> GetGastos()
+        [ProducesResponseType(typeof(PaginatedResponseDto<Gasto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResponseDto<Gasto>>> GetGastos(
+            [FromQuery] int? categoriaId = null,
+            [FromQuery] string? tipo = null,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null,
+            [FromQuery] decimal? montoMin = null,
+            [FromQuery] decimal? montoMax = null,
+            [FromQuery] string? descripcionContiene = null,
+            [FromQuery] string ordenarPor = "fecha",
+            [FromQuery] string ordenDireccion = "desc",
+            [FromQuery] int pagina = 1,
+            [FromQuery] int tamañoPagina = 50)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var gastosDelUsuario = await _context.Gastos
-                                        .Where(g => g.UserId == userId)
-                                        .ToListAsync();
+            // Limitar tamaño de página
+            tamañoPagina = Math.Min(tamañoPagina, 100);
+            pagina = Math.Max(pagina, 1);
 
-            return Ok(gastosDelUsuario);
+            var query = _context.Gastos
+                .Where(g => g.UserId == userId)
+                .Include(g => g.Categoria)
+                .AsQueryable();
+
+            // Aplicar filtros
+            if (categoriaId.HasValue)
+                query = query.Where(g => g.CategoriaId == categoriaId.Value);
+
+            if (!string.IsNullOrEmpty(tipo))
+                query = query.Where(g => g.Tipo == tipo);
+
+            if (desde.HasValue)
+                query = query.Where(g => g.Fecha >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(g => g.Fecha <= hasta.Value);
+
+            if (montoMin.HasValue)
+                query = query.Where(g => g.Monto >= montoMin.Value);
+
+            if (montoMax.HasValue)
+                query = query.Where(g => g.Monto <= montoMax.Value);
+
+            if (!string.IsNullOrEmpty(descripcionContiene))
+                query = query.Where(g => g.Descripcion != null && g.Descripcion.Contains(descripcionContiene));
+
+            // Ordenamiento
+            query = ordenarPor.ToLower() switch
+            {
+                "monto" => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(g => g.Monto)
+                    : query.OrderByDescending(g => g.Monto),
+                _ => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(g => g.Fecha)
+                    : query.OrderByDescending(g => g.Fecha)
+            };
+
+            // Contar total antes de paginar
+            var totalItems = await query.CountAsync();
+            var totalPaginas = (int)Math.Ceiling(totalItems / (double)tamañoPagina);
+
+            // Aplicar paginación
+            var items = await query
+                .Skip((pagina - 1) * tamañoPagina)
+                .Take(tamañoPagina)
+                .ToListAsync();
+
+            var resultado = new PaginatedResponseDto<Gasto>
+            {
+                Items = items,
+                PaginaActual = pagina,
+                TamañoPagina = tamañoPagina,
+                TotalItems = totalItems,
+                TotalPaginas = totalPaginas,
+                TienePaginaAnterior = pagina > 1,
+                TienePaginaSiguiente = pagina < totalPaginas
+            };
+
+            return Ok(resultado);
         }
 
         /// <summary>

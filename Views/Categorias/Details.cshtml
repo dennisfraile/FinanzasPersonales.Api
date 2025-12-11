@@ -1,4 +1,4 @@
-﻿@model FinanzasPersonales.Api.Models.Ingreso
+﻿@model FinanzasPersonales.Api.Models.Categoria
 
 @{
     ViewData["Title"] = "Details";
@@ -7,26 +7,26 @@
 <h1>Details</h1>
 
 <div>
-    <h4>Ingreso</h4>
+    <h4>Categoria</h4>
     <hr />
     <dl class="row">
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Fecha)
+            @Html.DisplayNameFor(model => model.Nombre)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Fecha)
+            @Html.DisplayFor(model => model.Nombre)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Fuente)
+            @Html.DisplayNameFor(model => model.Tipo)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Fuente)
+            @Html.DisplayFor(model => model.Tipo)
         </dd>
         <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Monto)
+            @Html.DisplayNameFor(model => model.User)
         </dt>
         <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Monto)
+            @Html.DisplayFor(model => model.User.Id)
         </dd>
     </dl>
 </div>
