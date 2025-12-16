@@ -19,15 +19,14 @@ namespace FinanzasPersonales.Api.Models
         [ForeignKey("CategoriaId")]
         public virtual Categoria Categoria { get; set; } // Propiedad de navegación
 
-        [Required]
         [StringLength(50)]
-        public string Tipo { get; set; } // "Fijo" o "Variable"
+        public string? Tipo { get; set; } = "Variable"; // "Fijo" o "Variable", default Variable
 
         [StringLength(250)]
         public string? Descripcion { get; set; } // '?' permite valores nulos
 
         [Required]
-        [Column(TypeName = "decimal(18, 2)")] 
+        [Column(TypeName = "decimal(18, 2)")]
         public decimal Monto { get; set; }
 
         [Required]

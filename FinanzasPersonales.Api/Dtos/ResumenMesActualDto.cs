@@ -12,5 +12,7 @@ namespace FinanzasPersonales.Api.Dtos
         public decimal Balance { get; set; }
         public decimal PromedioGastoDiario { get; set; }
         public int CantidadTransacciones { get; set; }
+        public int MetasActivas { get; set; }
+        public int PresupuestosActivos { get; set; }
     }
 }

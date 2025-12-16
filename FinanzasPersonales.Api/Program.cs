@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -60,6 +61,12 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequiredLength = 6; // Contraseña de mínimo 6 caracteres
+
+    // Permitir nombres de usuario no únicos (el email es lo que identifica al usuario)
+    options.User.RequireUniqueEmail = true; // Email DEBE ser único
+
+    // Permitir letras, números, espacios y caracteres especiales en el nombre de usuario
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+ áéíóúÁÉÍÓÚñÑ";
 })
 .AddEntityFrameworkStores<FinanzasDbContext>() // Le dice a Identity que use nuestro DbContext
 .AddDefaultTokenProviders(); // Añade los proveedores para generar tokens (ej. reseteo de contraseña)
@@ -73,6 +80,18 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.INotificacionService,
 
 // Registrar servicio de metas mejoradas
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IMetasService, FinanzasPersonales.Api.Services.MetasService>();
+
+// Configurar CORS para permitir peticiones del frontend
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // Registrar job de notificaciones
 builder.Services.AddScoped<NotificacionesJob>();
@@ -103,11 +122,18 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? ""))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "")),
+
+        // CRÍTICO: Configurar el mapeo de claims
+        NameClaimType = ClaimTypes.NameIdentifier,
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
 var app = builder.Build();
+
+// Habilitar CORS
+app.UseCors();
 
 app.UseAuthentication(); // 1. Verifica quién eres (autenticación)
 app.UseAuthorization();  // 2. Verifica qué permisos tienes (autorización)

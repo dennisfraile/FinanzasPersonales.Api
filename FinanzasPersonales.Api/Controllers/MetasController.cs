@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Models;
+using FinanzasPersonales.Api.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization; // Para [Authorize]
 using System.Security.Claims; // Para obtener el ID del usuario desde el token
@@ -94,14 +95,26 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="meta">El objeto de Meta a crear desde el cuerpo de la solicitud.</param>
         /// <returns>La mueva meta creada con su ID asignado por la BD.</returns>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)] // Éxito: Devuelve un 201
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: Si los datos del modelo son incorrectos
-        public async Task<ActionResult<Meta>> PostMeta(Meta meta)
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Meta>> PostMeta(CreateMetaDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // --- ¡IMPORTANTE! Asignamos la meta al usuario logueado ---
-            meta.UserId = userId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest("No se pudo obtener el UserId del token JWT");
+            }
+
+            // Crear entidad Meta desde el DTO
+            var meta = new Meta
+            {
+                Metas = dto.Metas,
+                MontoTotal = dto.MontoTotal,
+                AhorroActual = dto.AhorroActual,
+                MontoRestante = dto.MontoRestante,
+                UserId = userId // Asignar desde el token
+            };
 
             _context.Metas.Add(meta);
             await _context.SaveChangesAsync();
@@ -115,35 +128,34 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="id">El ID de la meta que se desea modificar.</param>
         /// <param name="meta">El objeto Mete con la información actualizada.</param>
         /// <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
-        [HttpPut("{id}")] // Define la ruta como PUT /api/Metas/5
-        [ProducesResponseType(StatusCodes.Status204NoContent)] // Éxito: 204
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: IDs no coinciden
-        [ProducesResponseType(StatusCodes.Status404NotFound)] // Falla: Ingreso no existe
-        public async Task<IActionResult> PutMeta(int id, Meta meta)
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PutMeta(int id, UpdateMetaDto dto)
         {
-            if (id != meta.Id)
+            if (id != dto.Id)
             {
                 return BadRequest("El ID de la URL no coincide con el ID del cuerpo.");
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Asegurarnos de que el UserId en el objeto a guardar sea el del usuario logueado
-            meta.UserId = userId;
-
-            // Verificamos si la meta que intenta modificar realmente le pertenece
+            // Verificar que la meta existe y pertenece al usuario
             var metaExistente = await _context.Metas
-                                        .AsNoTracking() // No lo rastreamos, solo lo leemos
-                                        .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
             if (metaExistente == null)
             {
-                // Intenta modificar una meta que no existe O no es suyo
                 return NotFound();
             }
 
-            // Ahora sí, marcamos la entidad 'meta' (que tiene los datos nuevos) como modificada
-            _context.Entry(meta).State = EntityState.Modified;
+            // Actualizar propiedades desde el DTO
+            metaExistente.Metas = dto.Metas;
+            metaExistente.MontoTotal = dto.MontoTotal;
+            metaExistente.AhorroActual = dto.AhorroActual;
+            metaExistente.MontoRestante = dto.MontoRestante;
+            // UserId NO se modifica, se mantiene el original
 
             try
             {

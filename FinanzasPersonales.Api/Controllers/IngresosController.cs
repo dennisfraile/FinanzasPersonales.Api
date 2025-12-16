@@ -46,8 +46,8 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
         /// <returns>Lista paginada de ingresos</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(PaginatedResponseDto<Ingreso>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<PaginatedResponseDto<Ingreso>>> GetIngresos(
+        [ProducesResponseType(typeof(PaginatedResponseDto<IngresoDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResponseDto<IngresoDto>>> GetIngresos(
             [FromQuery] int? categoriaId = null,
             [FromQuery] DateTime? desde = null,
             [FromQuery] DateTime? hasta = null,
@@ -100,13 +100,22 @@ namespace FinanzasPersonales.Api.Controllers
             var totalItems = await query.CountAsync();
             var totalPaginas = (int)Math.Ceiling(totalItems / (double)tamañoPagina);
 
-            // Aplicar paginación
+            // Aplicar paginación y mapear a DTO
             var items = await query
                 .Skip((pagina - 1) * tamañoPagina)
                 .Take(tamañoPagina)
+                .Select(i => new IngresoDto
+                {
+                    Id = i.Id,
+                    Fecha = i.Fecha,
+                    CategoriaId = i.CategoriaId,
+                    CategoriaNombre = i.Categoria != null ? i.Categoria.Nombre : null,
+                    Descripcion = i.Descripcion,
+                    Monto = i.Monto
+                })
                 .ToListAsync();
 
-            var resultado = new PaginatedResponseDto<Ingreso>
+            var resultado = new PaginatedResponseDto<IngresoDto>
             {
                 Items = items,
                 PaginaActual = pagina,
@@ -163,14 +172,26 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="ingreso">El objeto de Ingreso a crear desde el cuerpo de la solicitud.</param>
         /// <returns>El nuevo ingreso creado con su ID asignado por la BD.</returns>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)] // Éxito: Devuelve un 201
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: Si los datos del modelo son incorrectos
-        public async Task<ActionResult<Ingreso>> PostIngreso(Ingreso ingreso)
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Ingreso>> PostIngreso(CreateIngresoDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // --- ¡IMPORTANTE! Asignamos el ingreso al usuario logueado ---
-            ingreso.UserId = userId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest("No se pudo obtener el UserId del token JWT");
+            }
+
+            // Crear entidad Ingreso desde el DTO
+            var ingreso = new Ingreso
+            {
+                Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc),
+                CategoriaId = dto.CategoriaId,
+                Descripcion = dto.Descripcion,
+                Monto = dto.Monto,
+                UserId = userId // Asignar desde el token
+            };
 
             _context.Ingresos.Add(ingreso);
             await _context.SaveChangesAsync();
@@ -184,35 +205,34 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="id">El ID del gasto que se desea modificar.</param>
         /// <param name="ingreso">El objeto Ingreso con la información actualizada.</param>
         /// <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
-        [HttpPut("{id}")] // Define la ruta como PUT /api/Ingresos/5
-        [ProducesResponseType(StatusCodes.Status204NoContent)] // Éxito: 204
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: IDs no coinciden
-        [ProducesResponseType(StatusCodes.Status404NotFound)] // Falla: Ingreso no existe
-        public async Task<IActionResult> PutIngreso(int id, Ingreso ingreso)
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PutIngreso(int id, UpdateIngresoDto dto)
         {
-            if (id != ingreso.Id)
+            if (id != dto.Id)
             {
                 return BadRequest("El ID de la URL no coincide con el ID del cuerpo.");
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Asegurarnos de que el UserId en el objeto a guardar sea el del usuario logueado
-            ingreso.UserId = userId;
-
-            // Verificamos si el ingreso que intenta modificar realmente le pertenece
+            // Verificar que el ingreso existe y pertenece al usuario
             var ingresoExistente = await _context.Ingresos
-                                        .AsNoTracking() // No lo rastreamos, solo lo leemos
-                                        .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
             if (ingresoExistente == null)
             {
-                // Intenta modificar un ingreso que no existe O no es suyo
                 return NotFound();
             }
 
-            // Ahora sí, marcamos la entidad 'ingreso' (que tiene los datos nuevos) como modificada
-            _context.Entry(ingreso).State = EntityState.Modified;
+            // Actualizar propiedades desde el DTO
+            ingresoExistente.Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc);
+            ingresoExistente.CategoriaId = dto.CategoriaId;
+            ingresoExistente.Descripcion = dto.Descripcion;
+            ingresoExistente.Monto = dto.Monto;
+            // UserId NO se modifica, se mantiene el original
 
             try
             {

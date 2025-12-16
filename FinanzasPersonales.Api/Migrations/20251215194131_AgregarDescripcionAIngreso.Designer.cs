@@ -3,6 +3,7 @@ using System;
 using FinanzasPersonales.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanzasPersonales.Api.Migrations
 {
     [DbContext(typeof(FinanzasDbContext))]
-    partial class FinanzasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251215194131_AgregarDescripcionAIngreso")]
+    partial class AgregarDescripcionAIngreso
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -124,7 +127,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("Tipo")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
@@ -151,6 +153,10 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.Property<int>("CategoriaId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");

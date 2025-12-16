@@ -52,8 +52,8 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="tamañoPagina">Elementos por página. Default: 50, Máximo: 100</param>
         /// <returns>Lista paginada de gastos</returns>
         [HttpGet]
-        [ProducesResponseType(typeof(PaginatedResponseDto<Gasto>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<PaginatedResponseDto<Gasto>>> GetGastos(
+        [ProducesResponseType(typeof(PaginatedResponseDto<GastoDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PaginatedResponseDto<GastoDto>>> GetGastos(
             [FromQuery] int? categoriaId = null,
             [FromQuery] string? tipo = null,
             [FromQuery] DateTime? desde = null,
@@ -114,13 +114,23 @@ namespace FinanzasPersonales.Api.Controllers
             var totalItems = await query.CountAsync();
             var totalPaginas = (int)Math.Ceiling(totalItems / (double)tamañoPagina);
 
-            // Aplicar paginación
+            // Aplicar paginación y mapear a DTO
             var items = await query
                 .Skip((pagina - 1) * tamañoPagina)
                 .Take(tamañoPagina)
+                .Select(g => new GastoDto
+                {
+                    Id = g.Id,
+                    Fecha = g.Fecha,
+                    CategoriaId = g.CategoriaId,
+                    CategoriaNombre = g.Categoria != null ? g.Categoria.Nombre : "",
+                    Tipo = g.Tipo ?? "Variable",
+                    Descripcion = g.Descripcion,
+                    Monto = g.Monto
+                })
                 .ToListAsync();
 
-            var resultado = new PaginatedResponseDto<Gasto>
+            var resultado = new PaginatedResponseDto<GastoDto>
             {
                 Items = items,
                 PaginaActual = pagina,
@@ -179,14 +189,27 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="gasto">El objeto de Gasto a crear desde el cuerpo de la solicitud.</param>
         /// <returns>El nuevo gasto creado con su ID asignado por la BD.</returns>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)] // Éxito: Devuelve un 201
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: Si los datos del modelo son incorrectos
-        public async Task<ActionResult<Gasto>> PostGasto(Gasto gasto)
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Gasto>> PostGasto(CreateGastoDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // --- ¡IMPORTANTE! Asignamos el gasto al usuario logueado ---
-            gasto.UserId = userId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return BadRequest("No se pudo obtener el UserId del token JWT");
+            }
+
+            // Crear entidad Gasto desde el DTO
+            var gasto = new Gasto
+            {
+                Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc),
+                CategoriaId = dto.CategoriaId,
+                Tipo = dto.Tipo,
+                Descripcion = dto.Descripcion,
+                Monto = dto.Monto,
+                UserId = userId // Asignar desde el token
+            };
 
             _context.Gastos.Add(gasto);
             await _context.SaveChangesAsync();
@@ -200,35 +223,35 @@ namespace FinanzasPersonales.Api.Controllers
         /// <param name="id">El ID del gasto que se desea modificar.</param>
         /// <param name="gasto">El objeto Gasto con la información actualizada.</param>
         /// <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
-        [HttpPut("{id}")] // Define la ruta como PUT /api/Gastos/5
-        [ProducesResponseType(StatusCodes.Status204NoContent)] // Éxito: 204
-        [ProducesResponseType(StatusCodes.Status400BadRequest)] // Falla: IDs no coinciden
-        [ProducesResponseType(StatusCodes.Status404NotFound)] // Falla: Gasto no existe
-        public async Task<IActionResult> PutGasto(int id, Gasto gasto)
+        [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PutGasto(int id, UpdateGastoDto dto)
         {
-            if (id != gasto.Id)
+            if (id != dto.Id)
             {
                 return BadRequest("El ID de la URL no coincide con el ID del cuerpo.");
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Asegurarnos de que el UserId en el objeto a guardar sea el del usuario logueado
-            gasto.UserId = userId;
-
-            // Verificamos si el gasto que intenta modificar realmente le pertenece
+            // Verificar que el gasto existe y pertenece al usuario
             var gastoExistente = await _context.Gastos
-                                        .AsNoTracking() // No lo rastreamos, solo lo leemos
-                                        .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
 
             if (gastoExistente == null)
             {
-                // Intenta modificar un gasto que no existe O no es suyo
                 return NotFound();
             }
 
-            // Ahora sí, marcamos la entidad 'gasto' (que tiene los datos nuevos) como modificada
-            _context.Entry(gasto).State = EntityState.Modified;
+            // Actualizar propiedades desde el DTO
+            gastoExistente.Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc);
+            gastoExistente.CategoriaId = dto.CategoriaId;
+            gastoExistente.Tipo = dto.Tipo;
+            gastoExistente.Descripcion = dto.Descripcion;
+            gastoExistente.Monto = dto.Monto;
+            // UserId NO se modifica, se mantiene el original
 
             try
             {

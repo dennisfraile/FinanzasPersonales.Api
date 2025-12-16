@@ -281,6 +281,10 @@ namespace FinanzasPersonales.Api.Controllers
                 fin = new DateTime(presupuesto.AnoAplicable, presupuesto.MesAplicable, 15);
             }
 
+            // Convertir a UTC para compatibilidad con PostgreSQL
+            inicio = DateTime.SpecifyKind(inicio, DateTimeKind.Utc);
+            fin = DateTime.SpecifyKind(fin, DateTimeKind.Utc);
+
             var gastado = await _context.Gastos
                 .Where(g => g.UserId == userId &&
                            g.CategoriaId == presupuesto.CategoriaId &&

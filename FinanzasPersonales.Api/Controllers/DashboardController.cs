@@ -25,16 +25,18 @@ namespace FinanzasPersonales.Api.Controllers
         /// <summary>
         /// Obtiene datos completos del dashboard
         /// </summary>
+        /// <param name="mes">Mes a consultar (1-12). Por defecto el mes actual</param>
+        /// <param name="ano">Año a consultar. Por defecto el año actual</param>
         [HttpGet]
         [ProducesResponseType(typeof(DashboardDto), StatusCodes.Status200OK)]
-        public async Task<ActionResult<DashboardDto>> GetDashboard()
+        public async Task<ActionResult<DashboardDto>> GetDashboard([FromQuery] int? mes = null, [FromQuery] int? ano = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            var mesActual = DateTime.Now.Month;
-            var anoActual = DateTime.Now.Year;
+            var mesActual = mes ?? DateTime.Now.Month;
+            var anoActual = ano ?? DateTime.Now.Year;
 
             // Resumen mes actual
             var ingresosMes = await _context.Ingresos
@@ -49,6 +51,14 @@ namespace FinanzasPersonales.Api.Controllers
                 .Where(g => g.UserId == userId && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
                 .CountAsync();
 
+            var cantMetas = await _context.Metas
+                .Where(m => m.UserId == userId)
+                .CountAsync();
+
+            var cantPresupuestos = await _context.Presupuestos
+                .Where(p => p.UserId == userId && p.MesAplicable == mesActual && p.AnoAplicable == anoActual)
+                .CountAsync();
+
             var resumenMes = new ResumenMesActualDto
             {
                 Mes = mesActual,
@@ -57,7 +67,9 @@ namespace FinanzasPersonales.Api.Controllers
                 TotalGastos = gastosMes,
                 Balance = ingresosMes - gastosMes,
                 PromedioGastoDiario = DateTime.Now.Day > 0 ? gastosMes / DateTime.Now.Day : 0,
-                CantidadTransacciones = cantTransacciones
+                CantidadTransacciones = cantTransacciones,
+                MetasActivas = cantMetas,
+                PresupuestosActivos = cantPresupuestos
             };
 
             // Últimos 6 meses
@@ -65,21 +77,21 @@ namespace FinanzasPersonales.Api.Controllers
             for (int i = 5; i >= 0; i--)
             {
                 var fecha = DateTime.Now.AddMonths(-i);
-                var mes = fecha.Month;
-                var ano = fecha.Year;
+                var mesLoop = fecha.Month;
+                var anoLoop = fecha.Year;
 
                 var ingresos = await _context.Ingresos
-                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mes && ing.Fecha.Year == ano)
+                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mesLoop && ing.Fecha.Year == anoLoop)
                     .SumAsync(ing => (decimal?)ing.Monto) ?? 0;
 
                 var gastos = await _context.Gastos
-                    .Where(g => g.UserId == userId && g.Fecha.Month == mes && g.Fecha.Year == ano)
+                    .Where(g => g.UserId == userId && g.Fecha.Month == mesLoop && g.Fecha.Year == anoLoop)
                     .SumAsync(g => (decimal?)g.Monto) ?? 0;
 
                 ultimos6Meses.Add(new EvolucionMensualDto
                 {
-                    Mes = mes,
-                    Ano = ano,
+                    Mes = mesLoop,
+                    Ano = anoLoop,
                     Periodo = $"{fecha:MMM yyyy}",
                     TotalIngresos = ingresos,
                     TotalGastos = gastos,

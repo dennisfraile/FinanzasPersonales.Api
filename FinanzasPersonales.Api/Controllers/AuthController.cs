@@ -108,9 +108,8 @@ namespace FinanzasPersonales.Api.Controllers
             // Los "Claims" son la información que guardamos dentro del token
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email), // Subject (quién es)
+                new Claim(ClaimTypes.NameIdentifier, user.Id), // ID del usuario (ÚNICO claim de identidad)
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.NameIdentifier, user.Id), // Guardamos el ID de usuario
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // ID único del token
             };
 
@@ -122,6 +121,89 @@ namespace FinanzasPersonales.Api.Controllers
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        /// <summary>
+        /// Obtiene el perfil del usuario autenticado
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize]
+        [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { Message = "Usuario no encontrado" });
+
+            return Ok(new UserProfileDto
+            {
+                Id = user.Id,
+                Email = user.Email ?? "",
+                UserName = user.UserName
+            });
+        }
+
+        /// <summary>
+        /// Actualiza el perfil del usuario
+        /// </summary>
+        [HttpPut("profile")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDto updateDto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { Message = "Usuario no encontrado" });
+
+            if (!string.IsNullOrWhiteSpace(updateDto.UserName))
+            {
+                user.UserName = updateDto.UserName;
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => $"{e.Code}: {e.Description}").ToList();
+                return BadRequest(new { Message = "Error al actualizar el perfil", Errors = errors });
+            }
+
+            return Ok(new { Message = "Perfil actualizado exitosamente" });
+        }
+
+        /// <summary>
+        /// Cambia la contraseña del usuario
+        /// </summary>
+        [HttpPut("change-password")]
+        [Authorize]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { Message = "Usuario no encontrado" });
+
+            var result = await _userManager.ChangePasswordAsync(user, changePasswordDto.CurrentPassword, changePasswordDto.NewPassword);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { Message = "Error al cambiar la contraseña", Errors = result.Errors });
+            }
+
+            return Ok(new { Message = "Contraseña cambiada exitosamente" });
         }
     }
 }

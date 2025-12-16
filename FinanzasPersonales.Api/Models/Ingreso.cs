@@ -19,8 +19,11 @@ namespace FinanzasPersonales.Api.Models
         [ForeignKey("CategoriaId")]
         public virtual Categoria Categoria { get; set; } // Propiedad de navegación
 
+        [StringLength(500)]
+        public string? Descripcion { get; set; } // Descripción opcional del ingreso
+
         [Required]
-        [Column(TypeName = "decimal(18, 2)")] 
+        [Column(TypeName = "decimal(18, 2)")]
         public decimal Monto { get; set; }
 
         [Required]
