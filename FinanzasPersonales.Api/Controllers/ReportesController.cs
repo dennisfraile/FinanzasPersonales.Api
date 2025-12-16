@@ -264,5 +264,336 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(resultado);
         }
+
+        /// <summary>
+        /// Obtiene tendencias mensuales de ingresos y gastos
+        /// </summary>
+        /// <param name="meses">Cantidad de meses a analizar (default: 6, máx: 12)</param>
+        [HttpGet("tendencias")]
+        [ProducesResponseType(typeof(TendenciasMensualesDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TendenciasMensualesDto>> GetTendencias([FromQuery] int meses = 6)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            meses = Math.Min(meses, 12);
+
+            var fechaActual = DateTime.Now;
+            var fechaInicio = fechaActual.AddMonths(-(meses - 1));
+            var inicioMes = new DateTime(fechaInicio.Year, fechaInicio.Month, 1);
+
+            var datos = new List<DatoMensualDto>();
+
+            for (int i = 0; i < meses; i++)
+            {
+                var mes = inicioMes.AddMonths(i);
+                var finMes = mes.AddMonths(1).AddDays(-1);
+
+                var ingresos = await _context.Ingresos
+                    .Where(x => x.UserId == userId && x.Fecha >= mes && x.Fecha <= finMes)
+                    .SumAsync(x => x.Monto);
+
+                var gastos = await _context.Gastos
+                    .Where(x => x.UserId == userId && x.Fecha >= mes && x.Fecha <= finMes)
+                    .SumAsync(x => x.Monto);
+
+                datos.Add(new DatoMensualDto
+                {
+                    Mes = mes.Month,
+                    Ano = mes.Year,
+                    Periodo = mes.ToString("MMM yyyy", new CultureInfo("es-ES")),
+                    TotalIngresos = ingresos,
+                    TotalGastos = gastos,
+                    Balance = ingresos - gastos
+                });
+            }
+
+            var resultado = new TendenciasMensualesDto
+            {
+                Periodo = new PeriodoDto
+                {
+                    Inicio = inicioMes,
+                    Fin = fechaActual
+                },
+                Datos = datos
+            };
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Compara el mes actual con el mes anterior
+        /// </summary>
+        [HttpGet("comparativa")]
+        [ProducesResponseType(typeof(ComparativaMesDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ComparativaMesDto>> GetComparativa(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var mesActual = mes ?? DateTime.Now.Month;
+            var anoActual = ano ?? DateTime.Now.Year;
+
+            // Mes actual
+            var inicioActual = new DateTime(anoActual, mesActual, 1);
+            var finActual = inicioActual.AddMonths(1).AddDays(-1);
+
+            // Mes anterior
+            var mesAnt = inicioActual.AddMonths(-1);
+            var inicioAnterior = new DateTime(mesAnt.Year, mesAnt.Month, 1);
+            var finAnterior = inicioAnterior.AddMonths(1).AddDays(-1);
+
+            // Datos mes actual
+            var ingresosActual = await _context.Ingresos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioActual && x.Fecha <= finActual)
+                .SumAsync(x => x.Monto);
+
+            var gastosActual = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioActual && x.Fecha <= finActual)
+                .SumAsync(x => x.Monto);
+
+            // Datos mes anterior
+            var ingresosAnterior = await _context.Ingresos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioAnterior && x.Fecha <= finAnterior)
+                .SumAsync(x => x.Monto);
+
+            var gastosAnterior = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioAnterior && x.Fecha <= finAnterior)
+                .SumAsync(x => x.Monto);
+
+            // Comparativa por categorías
+            var categoriasActual = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioActual && x.Fecha <= finActual)
+                .GroupBy(x => new { x.CategoriaId, x.Categoria.Nombre })
+                .Select(g => new { CategoriaId = g.Key.CategoriaId, Nombre = g.Key.Nombre, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
+            var categoriasAnterior = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioAnterior && x.Fecha <= finAnterior)
+                .GroupBy(x => new { x.CategoriaId, x.Categoria.Nombre })
+                .Select(g => new { CategoriaId = g.Key.CategoriaId, Nombre = g.Key.Nombre, Total = g.Sum(x => x.Monto) })
+                .ToDictionaryAsync(x => x.CategoriaId, x => x.Total);
+
+            var comparativaCategorias = categoriasActual.Select(ca => new ComparativaCategoriaDto
+            {
+                CategoriaId = ca.CategoriaId,
+                Nombre = ca.Nombre,
+                MesActual = ca.Total,
+                MesAnterior = categoriasAnterior.GetValueOrDefault(ca.CategoriaId, 0),
+                Cambio = categoriasAnterior.GetValueOrDefault(ca.CategoriaId, 0) > 0
+                    ? ((ca.Total - categoriasAnterior[ca.CategoriaId]) / categoriasAnterior[ca.CategoriaId]) * 100
+                    : 0
+            }).ToList();
+
+            var balanceActual = ingresosActual - gastosActual;
+            var balanceAnterior = ingresosAnterior - gastosAnterior;
+
+            var resultado = new ComparativaMesDto
+            {
+                MesActual = new ResumenMesDto
+                {
+                    Mes = mesActual,
+                    Ano = anoActual,
+                    TotalIngresos = ingresosActual,
+                    TotalGastos = gastosActual,
+                    Balance = balanceActual
+                },
+                MesAnterior = new ResumenMesDto
+                {
+                    Mes = mesAnt.Month,
+                    Ano = mesAnt.Year,
+                    TotalIngresos = ingresosAnterior,
+                    TotalGastos = gastosAnterior,
+                    Balance = balanceAnterior
+                },
+                Cambios = new CambiosDto
+                {
+                    IngresosPorcentaje = ingresosAnterior > 0 ? ((ingresosActual - ingresosAnterior) / ingresosAnterior) * 100 : 0,
+                    GastosPorcentaje = gastosAnterior > 0 ? ((gastosActual - gastosAnterior) / gastosAnterior) * 100 : 0,
+                    BalancePorcentaje = balanceAnterior > 0 ? ((balanceActual - balanceAnterior) / balanceAnterior) * 100 : 0
+                },
+                Categorias = comparativaCategorias
+            };
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Obtiene las categorías con más gastos
+        /// </summary>
+        [HttpGet("top-categorias")]
+        [ProducesResponseType(typeof(TopCategoriasDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TopCategoriasDto>> GetTopCategorias(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null,
+            [FromQuery] int limite = 5)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var mesActual = mes ?? DateTime.Now.Month;
+            var anoActual = ano ?? DateTime.Now.Year;
+
+            var inicioMes = new DateTime(anoActual, mesActual, 1);
+            var finMes = inicioMes.AddMonths(1).AddDays(-1);
+
+            var gastosPorCategoria = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= finMes)
+                .GroupBy(x => new { x.CategoriaId, x.Categoria.Nombre })
+                .Select(g => new
+                {
+                    CategoriaId = g.Key.CategoriaId,
+                    Nombre = g.Key.Nombre,
+                    Total = g.Sum(x => x.Monto),
+                    Cantidad = g.Count()
+                })
+                .OrderByDescending(x => x.Total)
+                .Take(limite)
+                .ToListAsync();
+
+            var totalGastos = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= finMes)
+                .SumAsync(x => x.Monto);
+
+            var resultado = new TopCategoriasDto
+            {
+                Mes = mesActual,
+                Ano = anoActual,
+                TotalGastos = totalGastos,
+                Categorias = gastosPorCategoria.Select(x => new CategoriaGastoDto
+                {
+                    CategoriaId = x.CategoriaId,
+                    Nombre = x.Nombre,
+                    Total = x.Total,
+                    Porcentaje = totalGastos > 0 ? (x.Total / totalGastos) * 100 : 0,
+                    CantidadTransacciones = x.Cantidad
+                }).ToList()
+            };
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Analiza gastos fijos vs variables
+        /// </summary>
+        [HttpGet("gastos-tipo")]
+        [ProducesResponseType(typeof(GastosTipoDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<GastosTipoDto>> GetGastosTipo(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var mesActual = mes ?? DateTime.Now.Month;
+            var anoActual = ano ?? DateTime.Now.Year;
+
+            var inicioMes = new DateTime(anoActual, mesActual, 1);
+            var finMes = inicioMes.AddMonths(1).AddDays(-1);
+
+            var gastos = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= finMes)
+                .GroupBy(x => x.Tipo)
+                .Select(g => new { Tipo = g.Key, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
+            var gastosFijos = gastos.FirstOrDefault(x => x.Tipo == "Fijo")?.Total ?? 0;
+            var gastosVariables = gastos.FirstOrDefault(x => x.Tipo == "Variable")?.Total ?? 0;
+            var totalGastos = gastosFijos + gastosVariables;
+
+            // Calcular promedio de últimos 3 meses
+            var hace3Meses = inicioMes.AddMonths(-3);
+            var promedioFijos = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= hace3Meses && x.Tipo == "Fijo")
+                .AverageAsync(x => (decimal?)x.Monto) ?? 0;
+
+            var promedioVariables = await _context.Gastos
+               .Where(x => x.UserId == userId && x.Fecha >= hace3Meses && x.Tipo == "Variable")
+               .AverageAsync(x => (decimal?)x.Monto) ?? 0;
+
+            var resultado = new GastosTipoDto
+            {
+                Mes = mesActual,
+                Ano = anoActual,
+                GastosFijos = new GastosPorTipoDetalleDto
+                {
+                    Total = gastosFijos,
+                    Porcentaje = totalGastos > 0 ? (gastosFijos / totalGastos) * 100 : 0,
+                    Promedio = promedioFijos
+                },
+                GastosVariables = new GastosPorTipoDetalleDto
+                {
+                    Total = gastosVariables,
+                    Porcentaje = totalGastos > 0 ? (gastosVariables / totalGastos) * 100 : 0,
+                    Promedio = promedioVariables
+                },
+                TotalGastos = totalGastos
+            };
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Proyecta los gastos del mes actual
+        /// </summary>
+        [HttpGet("proyeccion")]
+        [ProducesResponseType(typeof(ProyeccionGastosDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ProyeccionGastosDto>> GetProyeccion()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var hoy = DateTime.Now;
+            var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+            var finMes = inicioMes.AddMonths(1).AddDays(-1);
+            var diasTotales = finMes.Day;
+            var diasTranscurridos = hoy.Day;
+
+            // Gastos del mes actual
+            var gastosActuales = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= hoy)
+                .SumAsync(x => x.Monto);
+
+            // Promedio últimos 3 meses
+            var hace3Meses = inicioMes.AddMonths(-3);
+            var promedioUltimos3Meses = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= hace3Meses && x.Fecha < inicioMes)
+                .GroupBy(x => new { x.Fecha.Year, x.Fecha.Month })
+                .Select(g => g.Sum(x => x.Monto))
+                .AverageAsync();
+
+            // Proyección
+            var gastoEstimado = (gastosActuales / diasTranscurridos) * diasTotales;
+            var diferencia = gastoEstimado - promedioUltimos3Meses;
+            var porcentajeIncremento = promedioUltimos3Meses > 0
+                ? (diferencia / promedioUltimos3Meses) * 100
+                : 0;
+
+            var alerta = porcentajeIncremento > 20; // Alerta si es 20% más alto
+            var mensaje = alerta
+                ? $"Estás gastando un {Math.Abs(porcentajeIncremento):F2}% más que tu promedio"
+                : porcentajeIncremento < -10
+                    ? $"¡Bien! Estás gastando un {Math.Abs(porcentajeIncremento):F2}% menos que tu promedio"
+                    : "Tu gasto está dentro del promedio normal";
+
+            var resultado = new ProyeccionGastosDto
+            {
+                MesActual = new MesActualDto
+                {
+                    Mes = hoy.Month,
+                    Ano = hoy.Year,
+                    GastosActuales = gastosActuales,
+                    DiasTranscurridos = diasTranscurridos,
+                    DiasTotales = diasTotales
+                },
+                Proyeccion = new ProyeccionDetalleDto
+                {
+                    GastoEstimado = gastoEstimado,
+                    PromedioUltimos3Meses = promedioUltimos3Meses,
+                    Diferencia = diferencia,
+                    PorcentajeIncremento = porcentajeIncremento,
+                    Alerta = alerta,
+                    Mensaje = mensaje
+                }
+            };
+
+            return Ok(resultado);
+        }
     }
 }

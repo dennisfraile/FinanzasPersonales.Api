@@ -48,7 +48,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Categorias");
+                    b.ToTable("Categorias", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.ConfiguracionUsuario", b =>
@@ -99,7 +99,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ConfiguracionesUsuario");
+                    b.ToTable("ConfiguracionesUsuario", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
@@ -137,7 +137,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Gastos");
+                    b.ToTable("Gastos", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Ingreso", b =>
@@ -171,7 +171,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Ingresos");
+                    b.ToTable("Ingresos", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Meta", b =>
@@ -204,7 +204,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Metas");
+                    b.ToTable("Metas", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Notificacion", b =>
@@ -250,7 +250,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notificaciones");
+                    b.ToTable("Notificaciones", (string)null);
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Presupuesto", b =>
@@ -288,7 +288,7 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Presupuestos");
+                    b.ToTable("Presupuestos", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>

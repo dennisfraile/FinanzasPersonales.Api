@@ -45,5 +45,6 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Presupuesto> Presupuestos { get; set; }
         public DbSet<Notificacion> Notificaciones { get; set; }
         public DbSet<ConfiguracionUsuario> ConfiguracionesUsuario { get; set; }
+        public DbSet<ConfiguracionNotificaciones> ConfiguracionesNotificaciones { get; set; }
     }
 }
