@@ -32,6 +32,19 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(p => p.CategoriaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configuración para Transferencia -> Cuenta (dos relaciones)
+            modelBuilder.Entity<Transferencia>()
+                .HasOne(t => t.CuentaOrigen)
+                .WithMany(c => c.TransferenciasOrigen)
+                .HasForeignKey(t => t.CuentaOrigenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Transferencia>()
+                .HasOne(t => t.CuentaDestino)
+                .WithMany(c => c.TransferenciasDestino)
+                .HasForeignKey(t => t.CuentaDestinoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {
@@ -46,5 +59,7 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Notificacion> Notificaciones { get; set; }
         public DbSet<ConfiguracionUsuario> ConfiguracionesUsuario { get; set; }
         public DbSet<ConfiguracionNotificaciones> ConfiguracionesNotificaciones { get; set; }
+        public DbSet<Cuenta> Cuentas { get; set; }
+        public DbSet<Transferencia> Transferencias { get; set; }
     }
 }

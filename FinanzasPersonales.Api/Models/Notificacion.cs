@@ -31,7 +31,8 @@ namespace FinanzasPersonales.Api.Models
         public virtual IdentityUser? User { get; set; }
 
         [Required]
-        public TipoNotificacion Tipo { get; set; }
+        [StringLength(50)]
+        public required string Tipo { get; set; }  // Tipos: PresupuestoAlerta, MetaCercana, GastoInusual, etc.
 
         [Required]
         [StringLength(200)]

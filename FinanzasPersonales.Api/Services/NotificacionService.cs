@@ -22,7 +22,7 @@ namespace FinanzasPersonales.Api.Services
             var notificacion = new Notificacion
             {
                 UserId = userId,
-                Tipo = Enum.Parse<TipoNotificacion>(tipo),
+                Tipo = tipo,
                 Titulo = titulo,
                 Mensaje = mensaje,
                 FechaCreacion = DateTime.Now,
@@ -80,7 +80,7 @@ namespace FinanzasPersonales.Api.Services
                 .Select(n => new NotificacionDto
                 {
                     Id = n.Id,
-                    Tipo = n.Tipo.ToString(),
+                    Tipo = n.Tipo,
                     Titulo = n.Titulo,
                     Mensaje = n.Mensaje,
                     FechaCreacion = n.FechaCreacion,
