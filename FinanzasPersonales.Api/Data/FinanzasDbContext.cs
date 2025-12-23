@@ -61,5 +61,6 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<ConfiguracionNotificaciones> ConfiguracionesNotificaciones { get; set; }
         public DbSet<Cuenta> Cuentas { get; set; }
         public DbSet<Transferencia> Transferencias { get; set; }
+        public DbSet<GastoRecurrente> GastosRecurrentes { get; set; }
     }
 }
