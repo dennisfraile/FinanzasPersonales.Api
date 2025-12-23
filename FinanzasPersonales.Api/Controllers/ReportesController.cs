@@ -595,5 +595,87 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(resultado);
         }
+
+        /// <summary>
+        /// Obtiene datos de calendario con transacciones agrupadas por día para un mes específico.
+        /// </summary>
+        [HttpGet("calendario")]
+        public async Task<ActionResult<CalendarioDto>> GetCalendario(int mes, int ano)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+
+            var primerDia = new DateTime(ano, mes, 1);
+            var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
+
+            // Obtener gastos del mes
+            var gastos = await _context.Gastos
+                .Include(g => g.Categoria)
+                .Where(g => g.UserId == userId &&
+                            g.Fecha >= primerDia &&
+                            g.Fecha <= ultimoDia)
+                .ToListAsync();
+
+            // Obtener ingresos del mes
+            var ingresos = await _context.Ingresos
+                .Include(i => i.Categoria)
+                .Where(i => i.UserId == userId &&
+                            i.Fecha >= primerDia &&
+                            i.Fecha <= ultimoDia)
+                .ToListAsync();
+
+            // Agrupar por día
+            var dias = new List<DiaCalendarioDto>();
+
+            for (var fecha = primerDia; fecha <= ultimoDia; fecha = fecha.AddDays(1))
+            {
+                var gastosDelDia = gastos.Where(g => g.Fecha.Date == fecha.Date).ToList();
+                var ingresosDelDia = ingresos.Where(i => i.Fecha.Date == fecha.Date).ToList();
+
+                var totalGastos = gastosDelDia.Sum(g => g.Monto);
+                var totalIngresos = ingresosDelDia.Sum(i => i.Monto);
+
+                var transacciones = new List<TransaccionSummaryDto>();
+
+                transacciones.AddRange(gastosDelDia.Select(g => new TransaccionSummaryDto
+                {
+                    Id = g.Id,
+                    Tipo = "Gasto",
+                    Descripcion = g.Descripcion,
+                    Monto = g.Monto,
+                    CategoriaNombre = g.Categoria?.Nombre
+                }));
+
+                transacciones.AddRange(ingresosDelDia.Select(i => new TransaccionSummaryDto
+                {
+                    Id = i.Id,
+                    Tipo = "Ingreso",
+                    Descripcion = i.Descripcion,
+                    Monto = i.Monto,
+                    CategoriaNombre = i.Categoria?.Nombre
+                }));
+
+                if (transacciones.Any())
+                {
+                    dias.Add(new DiaCalendarioDto
+                    {
+                        Fecha = fecha,
+                        TotalIngresos = totalIngresos,
+                        TotalGastos = totalGastos,
+                        Balance = totalIngresos - totalGastos,
+                        CantidadTransacciones = transacciones.Count,
+                        Transacciones = transacciones
+                    });
+                }
+            }
+
+            var resultado = new CalendarioDto
+            {
+                Mes = mes,
+                Ano = ano,
+                Dias = dias
+            };
+
+            return Ok(resultado);
+        }
     }
 }
