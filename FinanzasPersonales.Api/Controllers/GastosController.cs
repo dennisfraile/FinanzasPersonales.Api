@@ -208,10 +208,21 @@ namespace FinanzasPersonales.Api.Controllers
                 Tipo = dto.Tipo,
                 Descripcion = dto.Descripcion,
                 Monto = dto.Monto,
+                CuentaId = dto.CuentaId, // NUEVO: Asignar cuenta
                 UserId = userId // Asignar desde el token
             };
 
             _context.Gastos.Add(gasto);
+
+            // NUEVO: Actualizar balance de la cuenta si está asignada
+            if (dto.CuentaId.HasValue)
+            {
+                var cuenta = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    cuenta.BalanceActual -= dto.Monto; // Restar gasto
+                }
+            }
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetGasto", new { id = gasto.Id }, gasto);
@@ -250,8 +261,47 @@ namespace FinanzasPersonales.Api.Controllers
             gastoExistente.CategoriaId = dto.CategoriaId;
             gastoExistente.Tipo = dto.Tipo;
             gastoExistente.Descripcion = dto.Descripcion;
+
+            // NUEVO: Ajustar balances si cambió cuenta o monto
+            var montoAnterior = gastoExistente.Monto;
+            var cuentaAnteriorId = gastoExistente.CuentaId;
+
             gastoExistente.Monto = dto.Monto;
+            gastoExistente.CuentaId = dto.CuentaId;
             // UserId NO se modifica, se mantiene el original
+
+            // Ajustar balances de cuentas:
+            if (cuentaAnteriorId != dto.CuentaId)
+            {
+                // Caso 1: Cambió de cuenta
+                if (cuentaAnteriorId.HasValue)
+                {
+                    var cuentaAnterior = await _context.Cuentas.FindAsync(cuentaAnteriorId.Value);
+                    if (cuentaAnterior != null && cuentaAnterior.UserId == userId)
+                    {
+                        cuentaAnterior.BalanceActual += montoAnterior; // Revertir gasto anterior
+                    }
+                }
+
+                if (dto.CuentaId.HasValue)
+                {
+                    var cuentaNueva = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                    if (cuentaNueva != null && cuentaNueva.UserId == userId)
+                    {
+                        cuentaNueva.BalanceActual -= dto.Monto; // Aplicar nuevo gasto
+                    }
+                }
+            }
+            else if (montoAnterior != dto.Monto && dto.CuentaId.HasValue)
+            {
+                // Caso 2: Misma cuenta, cambió monto
+                var cuenta = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    var diferencia = dto.Monto - montoAnterior;
+                    cuenta.BalanceActual -= diferencia; // Ajustar por diferencia
+                }
+            }
 
             try
             {
@@ -292,6 +342,16 @@ namespace FinanzasPersonales.Api.Controllers
             {
                 // No existe O no es suyo
                 return NotFound();
+            }
+
+            // NUEVO: Revertir balance si tenía cuenta asignada
+            if (gasto.CuentaId.HasValue)
+            {
+                var cuenta = await _context.Cuentas.FindAsync(gasto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    cuenta.BalanceActual += gasto.Monto; // Devolver dinero
+                }
             }
 
             _context.Gastos.Remove(gasto);
