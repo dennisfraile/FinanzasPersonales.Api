@@ -290,5 +290,88 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(grafica);
         }
+
+        /// <summary>
+        /// Obtiene métricas mejoradas para dashboard con gráficas
+        /// </summary>
+        [HttpGet("metrics")]
+        public async Task<ActionResult<DashboardMetricsDto>> GetMetrics()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var hoy = DateTime.Now;
+            var primerDiaMesActual = new DateTime(hoy.Year, hoy.Month, 1);
+            var ultimoDiaMesActual = primerDiaMesActual.AddMonths(1).AddDays(-1);
+            var primerDiaMesAnterior = primerDiaMesActual.AddMonths(-1);
+            var ultimoDiaMesAnterior = primerDiaMesActual.AddDays(-1);
+
+            // Totales mes actual
+            var ingresosActual = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= primerDiaMesActual && i.Fecha <= ultimoDiaMesActual)
+                .SumAsync(i => (decimal?)i.Monto) ?? 0;
+
+            var gastosActual = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual)
+                .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+            // Totales mes anterior (para comparación)
+            var gastosAnterior = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesAnterior && g.Fecha < primerDiaMesActual)
+                .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+            var cambio = gastosAnterior > 0 ? ((gastosActual - gastosAnterior) / gastosAnterior) * 100 : 0;
+
+            // Tendencia 6 meses
+            var tendencia = new List<MesFinancieroDto>();
+            for (int i = 5; i >= 0; i--)
+            {
+                var mesRef = hoy.AddMonths(-i);
+                var primerDia = new DateTime(mesRef.Year, mesRef.Month, 1);
+                var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
+
+                var ing = await _context.Ingresos
+                    .Where(x => x.UserId == userId && x.Fecha >= primerDia && x.Fecha <= ultimoDia)
+                    .SumAsync(x => (decimal?)x.Monto) ?? 0;
+
+                var gst = await _context.Gastos
+                    .Where(x => x.UserId == userId && x.Fecha >= primerDia && x.Fecha <= ultimoDia)
+                    .SumAsync(x => (decimal?)x.Monto) ?? 0;
+
+                tendencia.Add(new MesFinancieroDto
+                {
+                    Mes = mesRef.ToString("MMM yyyy"),
+                    Ingresos = ing,
+                    Gastos = gst
+                });
+            }
+
+            // Top 5 categorías
+            var top5 = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual)
+                .Include(g => g.Categoria)
+                .GroupBy(g => new { g.CategoriaId, g.Categoria.Nombre })
+                .Select(g => new CategoriaTopDto
+                {
+                    Nombre = g.Key.Nombre,
+                    Total = g.Sum(x => x.Monto),
+                    Color = "#" + g.Key.CategoriaId.ToString("X6").Substring(0, 6) // Color basado en ID
+                })
+                .OrderByDescending(c => c.Total)
+                .Take(5)
+                .ToListAsync();
+
+            var result = new DashboardMetricsDto
+            {
+                TotalIngresosDelMes = ingresosActual,
+                TotalGastosDelMes = gastosActual,
+                BalanceDelMes = ingresosActual - gastosActual,
+                CambioMesAnterior = cambio,
+                Tendencia6Meses = tendencia,
+                Top5Categorias = top5
+            };
+
+            return Ok(result);
+        }
     }
 }
