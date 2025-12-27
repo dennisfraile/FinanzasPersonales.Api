@@ -677,5 +677,75 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(resultado);
         }
+
+        [HttpGet("comparar-periodos")]
+        public async Task<ActionResult<ComparacionPeriodosDto>> CompararPeriodos(
+            [FromQuery] DateTime fecha1Inicio,
+            [FromQuery] DateTime fecha1Fin,
+            [FromQuery] DateTime fecha2Inicio,
+            [FromQuery] DateTime fecha2Fin)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            // Período 1
+            var ingresos1 = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= fecha1Inicio && i.Fecha <= fecha1Fin)
+                .ToListAsync();
+            var gastos1 = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= fecha1Inicio && g.Fecha <= fecha1Fin)
+                .ToListAsync();
+
+            var totalIngresos1 = ingresos1.Sum(i => i.Monto);
+            var totalGastos1 = gastos1.Sum(g => g.Monto);
+
+            // Período 2
+            var ingresos2 = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= fecha2Inicio && i.Fecha <= fecha2Fin)
+                .ToListAsync();
+            var gastos2 = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= fecha2Inicio && g.Fecha <= fecha2Fin)
+                .ToListAsync();
+
+            var totalIngresos2 = ingresos2.Sum(i => i.Monto);
+            var totalGastos2 = gastos2.Sum(g => g.Monto);
+
+            // Cálculos
+            var diffIngresos = totalIngresos2 - totalIngresos1;
+            var diffGastos = totalGastos2 - totalGastos1;
+            var diffBalance = (totalIngresos2 - totalGastos2) - (totalIngresos1 - totalGastos1);
+
+            var pctIngresos = totalIngresos1 > 0 ? (diffIngresos / totalIngresos1) * 100 : 0;
+            var pctGastos = totalGastos1 > 0 ? (diffGastos / totalGastos1) * 100 : 0;
+
+            return Ok(new ComparacionPeriodosDto
+            {
+                Periodo1 = new PeriodoFinancieroDto
+                {
+                    FechaInicio = fecha1Inicio,
+                    FechaFin = fecha1Fin,
+                    TotalIngresos = totalIngresos1,
+                    TotalGastos = totalGastos1,
+                    Balance = totalIngresos1 - totalGastos1,
+                    CantidadIngresos = ingresos1.Count,
+                    CantidadGastos = gastos1.Count
+                },
+                Periodo2 = new PeriodoFinancieroDto
+                {
+                    FechaInicio = fecha2Inicio,
+                    FechaFin = fecha2Fin,
+                    TotalIngresos = totalIngresos2,
+                    TotalGastos = totalGastos2,
+                    Balance = totalIngresos2 - totalGastos2,
+                    CantidadIngresos = ingresos2.Count,
+                    CantidadGastos = gastos2.Count
+                },
+                DiferenciaIngresos = diffIngresos,
+                DiferenciaGastos = diffGastos,
+                DiferenciaBalance = diffBalance,
+                PorcentajeCambioIngresos = pctIngresos,
+                PorcentajeCambioGastos = pctGastos
+            });
+        }
     }
 }
