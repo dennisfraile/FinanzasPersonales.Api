@@ -332,6 +332,28 @@ namespace FinanzasPersonales.Api.Controllers
                 }
             }
 
+            // Actualizar tags: eliminar antiguos y agregar nuevos
+            if (dto.TagIds != null)
+            {
+                // Eliminar tags anteriores
+                var tagsAntiguos = _context.GastoTags.Where(gt => gt.GastoId == id);
+                _context.GastoTags.RemoveRange(tagsAntiguos);
+
+                // Agregar nuevos tags
+                if (dto.TagIds.Any())
+                {
+                    var nuevosTags = dto.TagIds.Select(tagId => new GastoTag
+                    {
+                        GastoId = id,
+                        TagId = tagId
+                    }).ToList();
+
+                    _context.GastoTags.AddRange(nuevosTags);
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
             return NoContent();
         }
 
