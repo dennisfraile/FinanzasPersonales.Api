@@ -207,6 +207,19 @@ namespace FinanzasPersonales.Api.Controllers
             }
             await _context.SaveChangesAsync();
 
+            // Guardar relaciones con tags
+            if (dto.TagIds != null && dto.TagIds.Any())
+            {
+                var ingresoTags = dto.TagIds.Select(tagId => new IngresoTag
+                {
+                    IngresoId = ingreso.Id,
+                    TagId = tagId
+                }).ToList();
+
+                _context.IngresoTags.AddRange(ingresoTags);
+                await _context.SaveChangesAsync();
+            }
+
             return CreatedAtAction("GetIngreso", new { id = ingreso.Id }, ingreso);
         }
 
