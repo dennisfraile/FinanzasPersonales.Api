@@ -56,7 +56,8 @@ namespace FinanzasPersonales.Api.Controllers
             [FromQuery] string ordenarPor = "fecha",
             [FromQuery] string ordenDireccion = "desc",
             [FromQuery] int pagina = 1,
-            [FromQuery] int tamañoPagina = 50)
+            [FromQuery] int tamañoPagina = 50,
+            [FromQuery] List<int>? tagIds = null)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -86,6 +87,12 @@ namespace FinanzasPersonales.Api.Controllers
 
             if (montoMax.HasValue)
                 query = query.Where(i => i.Monto <= montoMax.Value);
+
+            // Filtrar por tags
+            if (tagIds != null && tagIds.Any())
+            {
+                query = query.Where(i => i.IngresoTags.Any(it => tagIds.Contains(it.TagId)));
+            }
 
             // Ordenamiento
             query = ordenarPor.ToLower() switch
