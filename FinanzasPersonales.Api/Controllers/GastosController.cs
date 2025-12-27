@@ -75,6 +75,8 @@ namespace FinanzasPersonales.Api.Controllers
             var query = _context.Gastos
                 .Where(g => g.UserId == userId)
                 .Include(g => g.Categoria)
+                .Include(g => g.GastoTags)
+                    .ThenInclude(gt => gt.Tag)
                 .AsQueryable();
 
             // Aplicar filtros
@@ -126,7 +128,8 @@ namespace FinanzasPersonales.Api.Controllers
                     CategoriaNombre = g.Categoria != null ? g.Categoria.Nombre : "",
                     Tipo = g.Tipo ?? "Variable",
                     Descripcion = g.Descripcion,
-                    Monto = g.Monto
+                    Monto = g.Monto,
+                    TagIds = g.GastoTags.Select(gt => gt.TagId).ToList()
                 })
                 .ToListAsync();
 

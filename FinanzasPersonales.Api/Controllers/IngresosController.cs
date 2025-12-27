@@ -67,6 +67,8 @@ namespace FinanzasPersonales.Api.Controllers
             var query = _context.Ingresos
                 .Where(i => i.UserId == userId)
                 .Include(i => i.Categoria)
+                .Include(i => i.IngresoTags)
+                    .ThenInclude(it => it.Tag)
                 .AsQueryable();
 
             // Aplicar filtros
@@ -109,9 +111,10 @@ namespace FinanzasPersonales.Api.Controllers
                     Id = i.Id,
                     Fecha = i.Fecha,
                     CategoriaId = i.CategoriaId,
-                    CategoriaNombre = i.Categoria != null ? i.Categoria.Nombre : null,
+                    CategoriaNombre = i.Categoria != null ? i.Categoria.Nombre : "",
                     Descripcion = i.Descripcion,
-                    Monto = i.Monto
+                    Monto = i.Monto,
+                    TagIds = i.IngresoTags.Select(it => it.TagId).ToList()
                 })
                 .ToListAsync();
 
