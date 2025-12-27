@@ -63,9 +63,11 @@ namespace FinanzasPersonales.Api.Dtos
         public int Id { get; set; }
         public DateTime Fecha { get; set; }
         public int CategoriaId { get; set; }
-        public string CategoriaNombre { get; set; }
-        public string Tipo { get; set; }
+        public string? CategoriaNombre { get; set; }
+        public string? Tipo { get; set; }
         public string? Descripcion { get; set; }
         public decimal Monto { get; set; }
+        public int? CuentaId { get; set; }
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 }

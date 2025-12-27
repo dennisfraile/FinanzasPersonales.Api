@@ -22,6 +22,7 @@ namespace FinanzasPersonales.Api.Dtos
 
         // Relación con cuenta (opcional)
         public int? CuentaId { get; set; }
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 
     /// <summary>
@@ -60,5 +61,7 @@ namespace FinanzasPersonales.Api.Dtos
         public string? CategoriaNombre { get; set; }
         public string? Descripcion { get; set; }
         public decimal Monto { get; set; }
+        public int? CuentaId { get; set; }
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 }
