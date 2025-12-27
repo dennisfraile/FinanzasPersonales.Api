@@ -48,6 +48,9 @@ namespace FinanzasPersonales.Api.Dtos
 
         // Relación con cuenta (opcional)
         public int? CuentaId { get; set; }
+
+        // Tags asociados  
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 
     /// <summary>
