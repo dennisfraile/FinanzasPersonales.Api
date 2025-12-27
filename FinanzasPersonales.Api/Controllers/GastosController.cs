@@ -220,10 +220,23 @@ namespace FinanzasPersonales.Api.Controllers
                 var cuenta = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
                 if (cuenta != null && cuenta.UserId == userId)
                 {
-                    cuenta.BalanceActual -= dto.Monto; // Restar gasto
+                    cuenta.BalanceActual -= dto.Monto; // Restar gasto del saldo
                 }
             }
             await _context.SaveChangesAsync();
+
+            // Guardar relaciones con tags
+            if (dto.TagIds != null && dto.TagIds.Any())
+            {
+                var gastoTags = dto.TagIds.Select(tagId => new GastoTag
+                {
+                    GastoId = gasto.Id,
+                    TagId = tagId
+                }).ToList();
+
+                _context.GastoTags.AddRange(gastoTags);
+                await _context.SaveChangesAsync();
+            }
 
             return CreatedAtAction("GetGasto", new { id = gasto.Id }, gasto);
         }
