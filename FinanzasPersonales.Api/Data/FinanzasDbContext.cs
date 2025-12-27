@@ -45,6 +45,34 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(t => t.CuentaDestinoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configuración many-to-many para GastoTag
+            modelBuilder.Entity<GastoTag>()
+                .HasKey(gt => new { gt.GastoId, gt.TagId });
+
+            modelBuilder.Entity<GastoTag>()
+                .HasOne(gt => gt.Gasto)
+                .WithMany(g => g.GastoTags)
+                .HasForeignKey(gt => gt.GastoId);
+
+            modelBuilder.Entity<GastoTag>()
+                .HasOne(gt => gt.Tag)
+                .WithMany(t => t.GastoTags)
+                .HasForeignKey(gt => gt.TagId);
+
+            // Configuración many-to-many para IngresoTag
+            modelBuilder.Entity<IngresoTag>()
+                .HasKey(it => new { it.IngresoId, it.TagId });
+
+            modelBuilder.Entity<IngresoTag>()
+                .HasOne(it => it.Ingreso)
+                .WithMany(i => i.IngresoTags)
+                .HasForeignKey(it => it.IngresoId);
+
+            modelBuilder.Entity<IngresoTag>()
+                .HasOne(it => it.Tag)
+                .WithMany(t => t.IngresoTags)
+                .HasForeignKey(it => it.TagId);
+
         }
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {
@@ -63,5 +91,10 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Transferencia> Transferencias { get; set; }
         public DbSet<GastoRecurrente> GastosRecurrentes { get; set; }
         public DbSet<Adjunto> Adjuntos { get; set; }
+
+        // Tags y relaciones many-to-many
+        public DbSet<Tag> Tags { get; set; }
+        public DbSet<GastoTag> GastoTags { get; set; }
+        public DbSet<IngresoTag> IngresoTags { get; set; }
     }
 }

@@ -37,5 +37,8 @@ namespace FinanzasPersonales.Api.Models
 
         [ForeignKey("CuentaId")]
         public virtual Cuenta? Cuenta { get; set; }
+
+        // Relación many-to-many con Tags
+        public ICollection<IngresoTag> IngresoTags { get; set; } = new List<IngresoTag>();
     }
 }
