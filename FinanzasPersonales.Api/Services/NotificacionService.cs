@@ -1,6 +1,8 @@
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Dtos;
+using FinanzasPersonales.Api.Hubs;
 using FinanzasPersonales.Api.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanzasPersonales.Api.Services
@@ -11,10 +13,12 @@ namespace FinanzasPersonales.Api.Services
     public class NotificacionService : INotificacionService
     {
         private readonly FinanzasDbContext _context;
+        private readonly IHubContext<NotificacionesHub> _hubContext;
 
-        public NotificacionService(FinanzasDbContext context)
+        public NotificacionService(FinanzasDbContext context, IHubContext<NotificacionesHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
         public async Task<int> CrearNotificacionAsync(string userId, string tipo, string titulo, string mensaje)
@@ -32,6 +36,19 @@ namespace FinanzasPersonales.Api.Services
 
             _context.Notificaciones.Add(notificacion);
             await _context.SaveChangesAsync();
+
+            // Enviar notificación en tiempo real via SignalR
+            var notificacionDto = new NotificacionDto
+            {
+                Id = notificacion.Id,
+                Tipo = notificacion.Tipo,
+                Titulo = notificacion.Titulo,
+                Mensaje = notificacion.Mensaje,
+                FechaCreacion = notificacion.FechaCreacion,
+                Leida = notificacion.Leida,
+                EmailEnviado = notificacion.EmailEnviado
+            };
+            await _hubContext.Clients.Group($"user_{userId}").SendAsync("NuevaNotificacion", notificacionDto);
 
             return notificacion.Id;
         }
