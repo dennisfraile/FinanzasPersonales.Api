@@ -1,13 +1,14 @@
 namespace FinanzasPersonales.Api.Dtos
 {
     /// <summary>
-    /// DTO para respuesta con información del perfil del usuario
+    /// DTO para respuesta con informacion del perfil del usuario
     /// </summary>
     public class UserProfileDto
     {
         public string Id { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string? UserName { get; set; }
+        public string? FotoUrl { get; set; }
     }
 
     /// <summary>
@@ -16,14 +17,5 @@ namespace FinanzasPersonales.Api.Dtos
     public class UpdateUserProfileDto
     {
         public string? UserName { get; set; }
-    }
-
-    /// <summary>
-    /// DTO para cambiar contraseña
-    /// </summary>
-    public class ChangePasswordDto
-    {
-        public required string CurrentPassword { get; set; }
-        public required string NewPassword { get; set; }
     }
 }
