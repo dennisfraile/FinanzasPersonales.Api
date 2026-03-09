@@ -235,8 +235,8 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<DashboardMetricsDto> GetMetricsAsync(string userId)
         {
-            var hoy = DateTime.Now;
-            var primerDiaMesActual = new DateTime(hoy.Year, hoy.Month, 1);
+            var hoy = DateTime.UtcNow;
+            var primerDiaMesActual = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var ultimoDiaMesActual = primerDiaMesActual.AddMonths(1).AddDays(-1);
             var primerDiaMesAnterior = primerDiaMesActual.AddMonths(-1);
 
@@ -261,7 +261,7 @@ namespace FinanzasPersonales.Api.Services
             for (int i = 5; i >= 0; i--)
             {
                 var mesRef = hoy.AddMonths(-i);
-                var primerDia = new DateTime(mesRef.Year, mesRef.Month, 1);
+                var primerDia = new DateTime(mesRef.Year, mesRef.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
 
                 var ing = await _context.Ingresos
@@ -282,14 +282,14 @@ namespace FinanzasPersonales.Api.Services
 
             // Top 5 categorias
             var top5 = await _context.Gastos
-                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual)
+                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual && g.CategoriaId != null)
                 .Include(g => g.Categoria)
-                .GroupBy(g => new { g.CategoriaId, g.Categoria.Nombre })
+                .GroupBy(g => new { g.CategoriaId, g.Categoria!.Nombre })
                 .Select(g => new CategoriaTopDto
                 {
                     Nombre = g.Key.Nombre,
                     Total = g.Sum(x => x.Monto),
-                    Color = "#" + g.Key.CategoriaId.ToString("X6").Substring(0, 6)
+                    Color = "#" + g.Key.CategoriaId.ToString()!.PadLeft(6, '0').Substring(0, 6)
                 })
                 .OrderByDescending(c => c.Total)
                 .Take(5)

@@ -248,13 +248,14 @@ namespace FinanzasPersonales.Api.Services
         private DateTime CalcularProximaFecha(string frecuencia, int dia)
         {
             var ahora = DateTime.UtcNow;
+            var baseDate = new DateTime(ahora.Year, ahora.Month, Math.Min(dia, DateTime.DaysInMonth(ahora.Year, ahora.Month)), 0, 0, 0, DateTimeKind.Utc);
 
             return frecuencia switch
             {
                 "Semanal" => ahora.AddDays((7 + (dia - (int)ahora.DayOfWeek)) % 7),
-                "Quincenal" => new DateTime(ahora.Year, ahora.Month, Math.Min(dia, DateTime.DaysInMonth(ahora.Year, ahora.Month))).AddDays(15),
-                "Mensual" => new DateTime(ahora.Year, ahora.Month, Math.Min(dia, DateTime.DaysInMonth(ahora.Year, ahora.Month))).AddMonths(1),
-                "Anual" => new DateTime(ahora.Year, ahora.Month, Math.Min(dia, DateTime.DaysInMonth(ahora.Year, ahora.Month))).AddYears(1),
+                "Quincenal" => baseDate.AddDays(15),
+                "Mensual" => baseDate.AddMonths(1),
+                "Anual" => baseDate.AddYears(1),
                 _ => ahora.AddMonths(1)
             };
         }
