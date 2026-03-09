@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using FinanzasPersonales.Api.Data;
-using FinanzasPersonales.Api.Models;
 using FinanzasPersonales.Api.Dtos;
 using System.Security.Claims;
+using FinanzasPersonales.Api.Services;
 
 namespace FinanzasPersonales.Api.Controllers
 {
@@ -13,11 +11,11 @@ namespace FinanzasPersonales.Api.Controllers
     [ApiController]
     public class TransferenciasController : ControllerBase
     {
-        private readonly FinanzasDbContext _context;
+        private readonly ITransferenciasService _transferenciasService;
 
-        public TransferenciasController(FinanzasDbContext context)
+        public TransferenciasController(ITransferenciasService transferenciasService)
         {
-            _context = context;
+            _transferenciasService = transferenciasService;
         }
 
         // GET: api/Transferencias
@@ -26,23 +24,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var transferencias = await _context.Transferencias
-                .Where(t => t.UserId == userId)
-                .Include(t => t.CuentaOrigen)
-                .Include(t => t.CuentaDestino)
-                .OrderByDescending(t => t.Fecha)
-                .Select(t => new TransferenciaDto
-                {
-                    Id = t.Id,
-                    CuentaOrigenId = t.CuentaOrigenId,
-                    CuentaOrigenNombre = t.CuentaOrigen!.Nombre,
-                    CuentaDestinoId = t.CuentaDestinoId,
-                    CuentaDestinoNombre = t.CuentaDestino!.Nombre,
-                    Monto = t.Monto,
-                    Fecha = t.Fecha,
-                    Descripcion = t.Descripcion
-                })
-                .ToListAsync();
+            var transferencias = await _transferenciasService.GetTransferenciasAsync(userId!);
 
             return Ok(transferencias);
         }
@@ -53,57 +35,12 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Validar que las cuentas existan y pertenezcan al usuario
-            var cuentaOrigen = await _context.Cuentas
-                .FirstOrDefaultAsync(c => c.Id == dto.CuentaOrigenId && c.UserId == userId);
+            var (result, error) = await _transferenciasService.CreateTransferenciaAsync(userId!, dto);
 
-            var cuentaDestino = await _context.Cuentas
-                .FirstOrDefaultAsync(c => c.Id == dto.CuentaDestinoId && c.UserId == userId);
+            if (error != null)
+                return BadRequest(error);
 
-            if (cuentaOrigen == null || cuentaDestino == null)
-                return BadRequest("Cuentas no encontradas");
-
-            if (dto.CuentaOrigenId == dto.CuentaDestinoId)
-                return BadRequest("No puedes transferir a la misma cuenta");
-
-            if (dto.Monto <= 0)
-                return BadRequest("El monto debe ser mayor a 0");
-
-            // Validar balance suficiente (opcional, depende de si permites saldo negativo)
-            // if (cuentaOrigen.BalanceActual < dto.Monto)
-            //     return BadRequest("Balance insuficiente");
-
-            // Crear transferencia
-            var transferencia = new Transferencia
-            {
-                UserId = userId!,
-                CuentaOrigenId = dto.CuentaOrigenId,
-                CuentaDestinoId = dto.CuentaDestinoId,
-                Monto = dto.Monto,
-                Fecha = DateTime.UtcNow,
-                Descripcion = dto.Descripcion
-            };
-
-            // Actualizar balances
-            cuentaOrigen.BalanceActual -= dto.Monto;
-            cuentaDestino.BalanceActual += dto.Monto;
-
-            _context.Transferencias.Add(transferencia);
-            await _context.SaveChangesAsync();
-
-            var result = new TransferenciaDto
-            {
-                Id = transferencia.Id,
-                CuentaOrigenId = transferencia.CuentaOrigenId,
-                CuentaOrigenNombre = cuentaOrigen.Nombre,
-                CuentaDestinoId = transferencia.CuentaDestinoId,
-                CuentaDestinoNombre = cuentaDestino.Nombre,
-                Monto = transferencia.Monto,
-                Fecha = transferencia.Fecha,
-                Descripcion = transferencia.Descripcion
-            };
-
-            return CreatedAtAction(nameof(GetTransferencias), new { id = transferencia.Id }, result);
+            return CreatedAtAction(nameof(GetTransferencias), new { id = result!.Id }, result);
         }
     }
 }

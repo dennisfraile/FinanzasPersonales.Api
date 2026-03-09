@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using FinanzasPersonales.Api.Data;
-using FinanzasPersonales.Api.Models;
 using FinanzasPersonales.Api.Dtos;
 using System.Security.Claims;
+using FinanzasPersonales.Api.Services;
 
 namespace FinanzasPersonales.Api.Controllers
 {
@@ -13,11 +11,11 @@ namespace FinanzasPersonales.Api.Controllers
     [ApiController]
     public class CuentasController : ControllerBase
     {
-        private readonly FinanzasDbContext _context;
+        private readonly ICuentasService _cuentasService;
 
-        public CuentasController(FinanzasDbContext context)
+        public CuentasController(ICuentasService cuentasService)
         {
-            _context = context;
+            _cuentasService = cuentasService;
         }
 
         // GET: api/Cuentas
@@ -26,23 +24,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var cuentas = await _context.Cuentas
-                .Where(c => c.UserId == userId && c.Activa)
-                .OrderBy(c => c.Nombre)
-                .Select(c => new CuentaDto
-                {
-                    Id = c.Id,
-                    Nombre = c.Nombre,
-                    Tipo = c.Tipo.ToString(),
-                    BalanceActual = c.BalanceActual,
-                    BalanceInicial = c.BalanceInicial,
-                    Moneda = c.Moneda,
-                    Color = c.Color,
-                    Icono = c.Icono,
-                    Activa = c.Activa,
-                    FechaCreacion = c.FechaCreacion
-                })
-                .ToListAsync();
+            var cuentas = await _cuentasService.GetCuentasAsync(userId!);
 
             return Ok(cuentas);
         }
@@ -53,22 +35,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var cuenta = await _context.Cuentas
-                .Where(c => c.Id == id && c.UserId == userId)
-                .Select(c => new CuentaDto
-                {
-                    Id = c.Id,
-                    Nombre = c.Nombre,
-                    Tipo = c.Tipo.ToString(),
-                    BalanceActual = c.BalanceActual,
-                    BalanceInicial = c.BalanceInicial,
-                    Moneda = c.Moneda,
-                    Color = c.Color,
-                    Icono = c.Icono,
-                    Activa = c.Activa,
-                    FechaCreacion = c.FechaCreacion
-                })
-                .FirstOrDefaultAsync();
+            var cuenta = await _cuentasService.GetCuentaAsync(userId!, id);
 
             if (cuenta == null)
                 return NotFound();
@@ -82,38 +49,9 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var cuenta = new Cuenta
-            {
-                UserId = userId!,
-                Nombre = dto.Nombre,
-                Tipo = Enum.Parse<TipoCuenta>(dto.Tipo),
-                BalanceInicial = dto.BalanceInicial,
-                BalanceActual = dto.BalanceInicial,  // Igual al inicial
-                Moneda = dto.Moneda,
-                Color = dto.Color,
-                Icono = dto.Icono,
-                Activa = true,
-                FechaCreacion = DateTime.UtcNow
-            };
+            var result = await _cuentasService.CreateCuentaAsync(userId!, dto);
 
-            _context.Cuentas.Add(cuenta);
-            await _context.SaveChangesAsync();
-
-            var result = new CuentaDto
-            {
-                Id = cuenta.Id,
-                Nombre = cuenta.Nombre,
-                Tipo = cuenta.Tipo.ToString(),
-                BalanceActual = cuenta.BalanceActual,
-                BalanceInicial = cuenta.BalanceInicial,
-                Moneda = cuenta.Moneda,
-                Color = cuenta.Color,
-                Icono = cuenta.Icono,
-                Activa = cuenta.Activa,
-                FechaCreacion = cuenta.FechaCreacion
-            };
-
-            return CreatedAtAction(nameof(GetCuenta), new { id = cuenta.Id }, result);
+            return CreatedAtAction(nameof(GetCuenta), new { id = result.Id }, result);
         }
 
         // PUT: api/Cuentas/{id}
@@ -122,19 +60,10 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var cuenta = await _context.Cuentas
-                .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+            var success = await _cuentasService.UpdateCuentaAsync(userId!, id, dto);
 
-            if (cuenta == null)
+            if (!success)
                 return NotFound();
-
-            cuenta.Nombre = dto.Nombre;
-            cuenta.BalanceActual = dto.BalanceActual;
-            cuenta.Color = dto.Color;
-            cuenta.Icono = dto.Icono;
-            cuenta.Activa = dto.Activa;
-
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -145,14 +74,10 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var cuenta = await _context.Cuentas
-                .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+            var success = await _cuentasService.DeleteCuentaAsync(userId!, id);
 
-            if (cuenta == null)
+            if (!success)
                 return NotFound();
-
-            cuenta.Activa = false;
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -163,9 +88,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var balanceTotal = await _context.Cuentas
-                .Where(c => c.UserId == userId && c.Activa)
-                .SumAsync(c => c.BalanceActual);
+            var balanceTotal = await _cuentasService.GetBalanceTotalAsync(userId!);
 
             return Ok(balanceTotal);
         }

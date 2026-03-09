@@ -9,6 +9,7 @@ using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using Hangfire;
 using Hangfire.PostgreSql;
+using FinanzasPersonales.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,12 +82,23 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.INotificacionService,
 // Registrar servicio de metas mejoradas
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IMetasService, FinanzasPersonales.Api.Services.MetasService>();
 
-// Configurar CORS para permitir peticiones del frontend
+// Registrar servicios de negocio (service layer)
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosService, FinanzasPersonales.Api.Services.GastosService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IIngresosService, FinanzasPersonales.Api.Services.IngresosService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IPresupuestosService, FinanzasPersonales.Api.Services.PresupuestosService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IDashboardService, FinanzasPersonales.Api.Services.DashboardService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IReportesService, FinanzasPersonales.Api.Services.ReportesService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITransferenciasService, FinanzasPersonales.Api.Services.TransferenciasService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.ICuentasService, FinanzasPersonales.Api.Services.CuentasService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosRecurrentesService, FinanzasPersonales.Api.Services.GastosRecurrentesService>();
+
+// Configurar CORS desde appsettings.json
+var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" };
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -105,6 +117,9 @@ builder.Services.AddHangfire(configuration => configuration
 
 // Agregar servidor de Hangfire
 builder.Services.AddHangfireServer();
+
+// Agregar SignalR
+builder.Services.AddSignalR();
 
 // Configurar Autenticación y JWT Bearer
 builder.Services.AddAuthentication(options =>
@@ -127,6 +142,21 @@ builder.Services.AddAuthentication(options =>
         // CRÍTICO: Configurar el mapeo de claims
         NameClaimType = ClaimTypes.NameIdentifier,
         RoleClaimType = ClaimTypes.Role
+    };
+
+    // Soporte para token de SignalR desde query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -153,6 +183,9 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Mapear hub de SignalR para notificaciones en tiempo real
+app.MapHub<NotificacionesHub>("/hubs/notificaciones");
 
 // Programar job recurrente de notificaciones (se ejecuta diariamente a las 9:00 AM)
 RecurringJob.AddOrUpdate<NotificacionesJob>(
