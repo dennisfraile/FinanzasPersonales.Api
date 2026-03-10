@@ -165,6 +165,13 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
+// Aplicar migraciones automáticamente en producción
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FinanzasDbContext>();
+    db.Database.Migrate();
+}
+
 // Habilitar CORS
 app.UseCors();
 
@@ -176,14 +183,11 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHttpsRedirection();
 }
 
 // Habilitar dashboard de Hangfire (disponible en desarrollo y producción)
 app.UseHangfireDashboard("/hangfire");
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
 
 app.MapControllers();
 
