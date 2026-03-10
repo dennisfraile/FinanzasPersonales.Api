@@ -71,8 +71,8 @@ namespace FinanzasPersonales.Api.Services
                     ? query.OrderBy(g => g.Monto)
                     : query.OrderByDescending(g => g.Monto),
                 _ => ordenDireccion.ToLower() == "asc"
-                    ? query.OrderBy(g => g.Fecha)
-                    : query.OrderByDescending(g => g.Fecha)
+                    ? query.OrderBy(g => g.Fecha).ThenBy(g => g.Id)
+                    : query.OrderByDescending(g => g.Fecha).ThenByDescending(g => g.Id)
             };
 
             var totalItems = await query.CountAsync();
@@ -114,6 +114,12 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<Gasto> CreateGastoAsync(string userId, CreateGastoDto dto)
         {
+            // Validar que la categoría pertenece al usuario
+            var categoriaExiste = await _context.Categorias
+                .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
+            if (!categoriaExiste)
+                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+
             var gasto = new Gasto
             {
                 Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc),

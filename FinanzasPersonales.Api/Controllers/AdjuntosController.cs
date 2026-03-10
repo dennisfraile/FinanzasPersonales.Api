@@ -57,6 +57,10 @@ namespace FinanzasPersonales.Api.Controllers
             if (!AllowedExtensions.Contains(extension))
                 return BadRequest("Solo se permiten archivos PDF. Por favor, escanea tus comprobantes como PDF.");
 
+            // Validar MIME type además de extensión
+            if (file.ContentType != "application/pdf")
+                return BadRequest("El tipo de archivo no es válido. Solo se permiten archivos PDF.");
+
             if (!gastoId.HasValue && !ingresoId.HasValue)
                 return BadRequest("Debe especificar un gastoId o ingresoId");
 

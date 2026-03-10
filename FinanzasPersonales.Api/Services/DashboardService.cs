@@ -52,7 +52,24 @@ namespace FinanzasPersonales.Api.Services
                 PresupuestosActivos = cantPresupuestos
             };
 
-            // Ultimos 6 meses
+            // Últimos 6 meses - batch query en vez de loop N+1
+            var fechaInicio6Meses = DateTime.SpecifyKind(
+                new DateTime(DateTime.Now.AddMonths(-5).Year, DateTime.Now.AddMonths(-5).Month, 1), DateTimeKind.Utc);
+            var fechaFin6Meses = DateTime.SpecifyKind(
+                new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1), DateTimeKind.Utc);
+
+            var ingresosPorMes = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= fechaInicio6Meses && i.Fecha <= fechaFin6Meses)
+                .GroupBy(i => new { i.Fecha.Year, i.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(i => i.Monto) })
+                .ToListAsync();
+
+            var gastosPorMes = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= fechaInicio6Meses && g.Fecha <= fechaFin6Meses)
+                .GroupBy(g => new { g.Fecha.Year, g.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
             var ultimos6Meses = new List<EvolucionMensualDto>();
             for (int i = 5; i >= 0; i--)
             {
@@ -60,13 +77,8 @@ namespace FinanzasPersonales.Api.Services
                 var mesLoop = fecha.Month;
                 var anoLoop = fecha.Year;
 
-                var ingresos = await _context.Ingresos
-                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mesLoop && ing.Fecha.Year == anoLoop)
-                    .SumAsync(ing => (decimal?)ing.Monto) ?? 0;
-
-                var gastos = await _context.Gastos
-                    .Where(g => g.UserId == userId && g.Fecha.Month == mesLoop && g.Fecha.Year == anoLoop)
-                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+                var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == anoLoop && x.Month == mesLoop)?.Total ?? 0;
+                var gastos = gastosPorMes.FirstOrDefault(x => x.Year == anoLoop && x.Month == mesLoop)?.Total ?? 0;
 
                 ultimos6Meses.Add(new EvolucionMensualDto
                 {
@@ -101,21 +113,25 @@ namespace FinanzasPersonales.Api.Services
                 cat.PorcentajeDelTotal = totalGastos > 0 ? (cat.TotalGastado / totalGastos) * 100 : 0;
             }
 
-            // Presupuestos activos
+            // Presupuestos activos - batch query para gastado (evita N+1)
             var presupuestos = await _context.Presupuestos
                 .Include(p => p.Categoria)
                 .Where(p => p.UserId == userId && p.MesAplicable == mesActual && p.AnoAplicable == anoActual)
                 .ToListAsync();
 
-            var presupuestosDto = new List<PresupuestoDto>();
-            foreach (var p in presupuestos)
-            {
-                var gastado = await _context.Gastos
-                    .Where(g => g.UserId == userId && g.CategoriaId == p.CategoriaId
-                               && g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
-                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+            var presCategIds = presupuestos.Select(p => p.CategoriaId).Distinct().ToList();
+            var gastadoPorCategoria = await _context.Gastos
+                .Where(g => g.UserId == userId &&
+                           presCategIds.Contains(g.CategoriaId) &&
+                           g.Fecha.Month == mesActual && g.Fecha.Year == anoActual)
+                .GroupBy(g => g.CategoriaId)
+                .Select(g => new { CategoriaId = g.Key, Total = g.Sum(x => x.Monto) })
+                .ToDictionaryAsync(g => g.CategoriaId, g => g.Total);
 
-                presupuestosDto.Add(new PresupuestoDto
+            var presupuestosDto = presupuestos.Select(p =>
+            {
+                var gastado = gastadoPorCategoria.GetValueOrDefault(p.CategoriaId, 0);
+                return new PresupuestoDto
                 {
                     Id = p.Id,
                     CategoriaId = p.CategoriaId,
@@ -127,8 +143,8 @@ namespace FinanzasPersonales.Api.Services
                     GastadoActual = gastado,
                     Disponible = p.MontoLimite - gastado,
                     PorcentajeUtilizado = p.MontoLimite > 0 ? (gastado / p.MontoLimite) * 100 : 0
-                });
-            }
+                };
+            }).ToList();
 
             return new DashboardDto
             {
@@ -144,21 +160,30 @@ namespace FinanzasPersonales.Api.Services
             if (meses > 12) meses = 12;
             if (meses < 1) meses = 1;
 
-            var datos = new List<PuntoGraficaDto>();
+            // Batch query en vez de loop N+1
+            var fechaInicio = DateTime.SpecifyKind(
+                new DateTime(DateTime.Now.AddMonths(-(meses - 1)).Year, DateTime.Now.AddMonths(-(meses - 1)).Month, 1), DateTimeKind.Utc);
+            var fechaFin = DateTime.SpecifyKind(
+                new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(1).AddDays(-1), DateTimeKind.Utc);
 
+            var ingresosPorMes = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= fechaInicio && i.Fecha <= fechaFin)
+                .GroupBy(i => new { i.Fecha.Year, i.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(i => i.Monto) })
+                .ToListAsync();
+
+            var gastosPorMes = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= fechaInicio && g.Fecha <= fechaFin)
+                .GroupBy(g => new { g.Fecha.Year, g.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
+            var datos = new List<PuntoGraficaDto>();
             for (int i = meses - 1; i >= 0; i--)
             {
                 var fecha = DateTime.Now.AddMonths(-i);
-                var mesVal = fecha.Month;
-                var anoVal = fecha.Year;
-
-                var ingresos = await _context.Ingresos
-                    .Where(ing => ing.UserId == userId && ing.Fecha.Month == mesVal && ing.Fecha.Year == anoVal)
-                    .SumAsync(ing => (decimal?)ing.Monto) ?? 0;
-
-                var gastos = await _context.Gastos
-                    .Where(g => g.UserId == userId && g.Fecha.Month == mesVal && g.Fecha.Year == anoVal)
-                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+                var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == fecha.Year && x.Month == fecha.Month)?.Total ?? 0;
+                var gastos = gastosPorMes.FirstOrDefault(x => x.Year == fecha.Year && x.Month == fecha.Month)?.Total ?? 0;
 
                 datos.Add(new PuntoGraficaDto
                 {
@@ -239,6 +264,7 @@ namespace FinanzasPersonales.Api.Services
             var primerDiaMesActual = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var ultimoDiaMesActual = primerDiaMesActual.AddMonths(1).AddDays(-1);
             var primerDiaMesAnterior = primerDiaMesActual.AddMonths(-1);
+            var primerDia6MesesAtras = primerDiaMesActual.AddMonths(-5);
 
             // Totales mes actual
             var ingresosActual = await _context.Ingresos
@@ -256,21 +282,25 @@ namespace FinanzasPersonales.Api.Services
 
             var cambio = gastosAnterior > 0 ? ((gastosActual - gastosAnterior) / gastosAnterior) * 100 : 0;
 
-            // Tendencia 6 meses
+            // Tendencia 6 meses - batch query (evita N+1)
+            var ingresosTendencia = await _context.Ingresos
+                .Where(i => i.UserId == userId && i.Fecha >= primerDia6MesesAtras && i.Fecha <= ultimoDiaMesActual)
+                .GroupBy(i => new { i.Fecha.Year, i.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(i => i.Monto) })
+                .ToListAsync();
+
+            var gastosTendencia = await _context.Gastos
+                .Where(g => g.UserId == userId && g.Fecha >= primerDia6MesesAtras && g.Fecha <= ultimoDiaMesActual)
+                .GroupBy(g => new { g.Fecha.Year, g.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
             var tendencia = new List<MesFinancieroDto>();
             for (int i = 5; i >= 0; i--)
             {
                 var mesRef = hoy.AddMonths(-i);
-                var primerDia = new DateTime(mesRef.Year, mesRef.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
-
-                var ing = await _context.Ingresos
-                    .Where(x => x.UserId == userId && x.Fecha >= primerDia && x.Fecha <= ultimoDia)
-                    .SumAsync(x => (decimal?)x.Monto) ?? 0;
-
-                var gst = await _context.Gastos
-                    .Where(x => x.UserId == userId && x.Fecha >= primerDia && x.Fecha <= ultimoDia)
-                    .SumAsync(x => (decimal?)x.Monto) ?? 0;
+                var ing = ingresosTendencia.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
+                var gst = gastosTendencia.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
 
                 tendencia.Add(new MesFinancieroDto
                 {

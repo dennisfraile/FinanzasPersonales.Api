@@ -27,13 +27,18 @@ namespace FinanzasPersonales.Api.Services
 
             var presupuestos = await query.Include(p => p.Categoria).ToListAsync();
 
-            var resultado = new List<PresupuestoDto>();
+            if (!presupuestos.Any())
+                return new List<PresupuestoDto>();
 
-            foreach (var presupuesto in presupuestos)
+            // Batch: calcular gastado para todas las categorías en una sola query (evita N+1)
+            var gastadoPorCategoria = await CalcularGastadoBatchAsync(userId, presupuestos);
+
+            var resultado = presupuestos.Select(presupuesto =>
             {
-                var gastadoActual = await CalcularGastadoActual(userId, presupuesto);
+                var key = (presupuesto.CategoriaId, presupuesto.MesAplicable, presupuesto.AnoAplicable, presupuesto.Periodo);
+                var gastadoActual = gastadoPorCategoria.GetValueOrDefault(key, 0m);
 
-                resultado.Add(new PresupuestoDto
+                return new PresupuestoDto
                 {
                     Id = presupuesto.Id,
                     CategoriaId = presupuesto.CategoriaId,
@@ -47,8 +52,8 @@ namespace FinanzasPersonales.Api.Services
                     PorcentajeUtilizado = presupuesto.MontoLimite > 0
                         ? (gastadoActual / presupuesto.MontoLimite) * 100
                         : 0
-                });
-            }
+                };
+            }).ToList();
 
             return resultado;
         }
@@ -168,11 +173,18 @@ namespace FinanzasPersonales.Api.Services
                 .Include(p => p.Categoria)
                 .ToListAsync();
 
+            if (!presupuestos.Any())
+                return new List<PresupuestoDto>();
+
+            // Batch: una sola query para todos los presupuestos
+            var gastadoPorCategoria = await CalcularGastadoBatchAsync(userId, presupuestos);
+
             var resultado = new List<PresupuestoDto>();
 
             foreach (var presupuesto in presupuestos)
             {
-                var gastadoActual = await CalcularGastadoActual(userId, presupuesto);
+                var key = (presupuesto.CategoriaId, presupuesto.MesAplicable, presupuesto.AnoAplicable, presupuesto.Periodo);
+                var gastadoActual = gastadoPorCategoria.GetValueOrDefault(key, 0m);
                 var porcentaje = presupuesto.MontoLimite > 0
                     ? (gastadoActual / presupuesto.MontoLimite) * 100
                     : 0;
@@ -198,6 +210,9 @@ namespace FinanzasPersonales.Api.Services
             return resultado.OrderByDescending(p => p.PorcentajeUtilizado).ToList();
         }
 
+        /// <summary>
+        /// Calcula el gastado para un solo presupuesto (usado en GetPresupuestoAsync individual)
+        /// </summary>
         public async Task<decimal> CalcularGastadoActual(string userId, Presupuesto presupuesto)
         {
             DateTime inicio, fin;
@@ -224,6 +239,53 @@ namespace FinanzasPersonales.Api.Services
                 .SumAsync(g => g.Monto);
 
             return gastado;
+        }
+
+        /// <summary>
+        /// Calcula el gastado en batch para múltiples presupuestos en una sola query (evita N+1)
+        /// </summary>
+        private async Task<Dictionary<(int CategoriaId, int Mes, int Ano, string Periodo), decimal>> CalcularGastadoBatchAsync(
+            string userId, List<Presupuesto> presupuestos)
+        {
+            var categoriaIds = presupuestos.Select(p => p.CategoriaId).Distinct().ToList();
+
+            var fechaMinima = presupuestos.Min(p => DateTime.SpecifyKind(
+                new DateTime(p.AnoAplicable, p.MesAplicable, 1), DateTimeKind.Utc));
+            var fechaMaxima = presupuestos.Max(p => DateTime.SpecifyKind(
+                new DateTime(p.AnoAplicable, p.MesAplicable, 1).AddMonths(1).AddDays(-1), DateTimeKind.Utc));
+
+            var gastos = await _context.Gastos
+                .Where(g => g.UserId == userId &&
+                           categoriaIds.Contains(g.CategoriaId) &&
+                           g.Fecha >= fechaMinima && g.Fecha <= fechaMaxima)
+                .Select(g => new { g.CategoriaId, g.Fecha, g.Monto })
+                .ToListAsync();
+
+            var result = new Dictionary<(int, int, int, string), decimal>();
+
+            foreach (var presupuesto in presupuestos)
+            {
+                DateTime inicio, fin;
+                if (presupuesto.Periodo == "Mensual")
+                {
+                    inicio = new DateTime(presupuesto.AnoAplicable, presupuesto.MesAplicable, 1);
+                    fin = inicio.AddMonths(1).AddDays(-1);
+                }
+                else
+                {
+                    inicio = new DateTime(presupuesto.AnoAplicable, presupuesto.MesAplicable, 1);
+                    fin = new DateTime(presupuesto.AnoAplicable, presupuesto.MesAplicable, 15);
+                }
+                inicio = DateTime.SpecifyKind(inicio, DateTimeKind.Utc);
+                fin = DateTime.SpecifyKind(fin, DateTimeKind.Utc);
+
+                var key = (presupuesto.CategoriaId, presupuesto.MesAplicable, presupuesto.AnoAplicable, presupuesto.Periodo);
+                result[key] = gastos
+                    .Where(g => g.CategoriaId == presupuesto.CategoriaId && g.Fecha >= inicio && g.Fecha <= fin)
+                    .Sum(g => g.Monto);
+            }
+
+            return result;
         }
     }
 }
