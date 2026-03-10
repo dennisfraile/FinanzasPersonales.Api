@@ -52,30 +52,29 @@ namespace FinanzasPersonales.Api.Services
         public async Task<List<EvolucionMensualDto>> GetEvolucionMensualAsync(string userId, int meses = 6)
         {
             meses = Math.Min(meses, 12);
+            var fechaActual = DateTime.Now;
+            var fechaInicio = new DateTime(fechaActual.AddMonths(-(meses - 1)).Year, fechaActual.AddMonths(-(meses - 1)).Month, 1);
+            var fechaFin = new DateTime(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
+
+            // Batch: 2 queries en vez de 2*meses
+            var ingresosPorMes = await _context.Ingresos
+                .Where(x => x.UserId == userId && x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
+                .GroupBy(x => new { x.Fecha.Year, x.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
+            var gastosPorMes = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= fechaInicio && x.Fecha <= fechaFin)
+                .GroupBy(x => new { x.Fecha.Year, x.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
 
             var resultado = new List<EvolucionMensualDto>();
-            var fechaActual = DateTime.Now;
-
             for (int i = meses - 1; i >= 0; i--)
             {
                 var mesRef = fechaActual.AddMonths(-i);
-                var inicioMes = new DateTime(mesRef.Year, mesRef.Month, 1);
-                var finMes = inicioMes.AddMonths(1).AddDays(-1);
-
-                var ingresos = await _context.Ingresos
-                    .Where(x => x.UserId == userId &&
-                               x.Fecha >= inicioMes &&
-                               x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
-
-                var gastos = await _context.Gastos
-                    .Where(x => x.UserId == userId &&
-                               x.Fecha >= inicioMes &&
-                               x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
-
-                var ahorro = ingresos * 0.10m;
-                var balance = ingresos - gastos;
+                var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
+                var gastos = gastosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
 
                 resultado.Add(new EvolucionMensualDto
                 {
@@ -84,8 +83,8 @@ namespace FinanzasPersonales.Api.Services
                     Periodo = mesRef.ToString("MMMM yyyy", new CultureInfo("es-ES")),
                     TotalIngresos = ingresos,
                     TotalGastos = gastos,
-                    AhorroCalculado = ahorro,
-                    Balance = balance
+                    AhorroCalculado = ingresos * 0.10m,
+                    Balance = ingresos - gastos
                 });
             }
 
@@ -207,21 +206,27 @@ namespace FinanzasPersonales.Api.Services
             var fechaActual = DateTime.Now;
             var fechaInicio = fechaActual.AddMonths(-(meses - 1));
             var inicioMes = new DateTime(fechaInicio.Year, fechaInicio.Month, 1);
+            var finMes = new DateTime(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
+
+            // Batch: 2 queries en vez de 2*meses
+            var ingresosPorMes = await _context.Ingresos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= finMes)
+                .GroupBy(x => new { x.Fecha.Year, x.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
+
+            var gastosPorMes = await _context.Gastos
+                .Where(x => x.UserId == userId && x.Fecha >= inicioMes && x.Fecha <= finMes)
+                .GroupBy(x => new { x.Fecha.Year, x.Fecha.Month })
+                .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
+                .ToListAsync();
 
             var datos = new List<DatoMensualDto>();
-
             for (int i = 0; i < meses; i++)
             {
                 var mesRef = inicioMes.AddMonths(i);
-                var finMes = mesRef.AddMonths(1).AddDays(-1);
-
-                var ingresos = await _context.Ingresos
-                    .Where(x => x.UserId == userId && x.Fecha >= mesRef && x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
-
-                var gastos = await _context.Gastos
-                    .Where(x => x.UserId == userId && x.Fecha >= mesRef && x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
+                var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
+                var gastos = gastosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
 
                 datos.Add(new DatoMensualDto
                 {

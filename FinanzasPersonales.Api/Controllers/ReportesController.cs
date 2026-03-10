@@ -169,7 +169,8 @@ namespace FinanzasPersonales.Api.Controllers
         [HttpGet("calendario")]
         public async Task<ActionResult<CalendarioDto>> GetCalendario(int mes, int ano)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
             var resultado = await _reportesService.GetCalendarioAsync(userId, mes, ano);
 

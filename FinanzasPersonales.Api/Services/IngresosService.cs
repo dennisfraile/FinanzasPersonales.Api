@@ -63,8 +63,8 @@ namespace FinanzasPersonales.Api.Services
                     ? query.OrderBy(i => i.Monto)
                     : query.OrderByDescending(i => i.Monto),
                 _ => ordenDireccion.ToLower() == "asc"
-                    ? query.OrderBy(i => i.Fecha)
-                    : query.OrderByDescending(i => i.Fecha)
+                    ? query.OrderBy(i => i.Fecha).ThenBy(i => i.Id)
+                    : query.OrderByDescending(i => i.Fecha).ThenByDescending(i => i.Id)
             };
 
             var totalItems = await query.CountAsync();
@@ -105,6 +105,12 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<Ingreso> CreateIngresoAsync(string userId, CreateIngresoDto dto)
         {
+            // Validar que la categoría pertenece al usuario
+            var categoriaExiste = await _context.Categorias
+                .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
+            if (!categoriaExiste)
+                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+
             var ingreso = new Ingreso
             {
                 Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc),

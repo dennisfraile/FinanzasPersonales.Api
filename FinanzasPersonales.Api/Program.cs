@@ -9,7 +9,9 @@ using System.Security.Claims;
 using Microsoft.OpenApi.Models;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Hangfire.Dashboard;
 using FinanzasPersonales.Api.Hubs;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,15 +97,15 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosRecurrentesSer
 // Registrar servicio de almacenamiento de archivos
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IFileStorageService, FinanzasPersonales.Api.Services.LocalFileStorageService>();
 
-// Configurar CORS desde appsettings.json
+// Configurar CORS desde appsettings.json (restringido a métodos y headers específicos)
 var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" };
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
+              .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+              .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
               .AllowCredentials();
     });
 });
@@ -163,6 +165,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Limitar tamaño de request body (50MB máximo para uploads)
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 52_428_800;
+});
+
 var app = builder.Build();
 
 // Aplicar migraciones automáticamente en producción
@@ -171,6 +179,40 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<FinanzasDbContext>();
     db.Database.Migrate();
 }
+
+// Middleware global de manejo de excepciones (evita exponer stack traces)
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+
+        if (exceptionFeature != null)
+        {
+            logger.LogError(exceptionFeature.Error, "Unhandled exception");
+        }
+
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            message = "Ha ocurrido un error interno del servidor.",
+            status = 500
+        }));
+    });
+});
+
+// Headers de seguridad
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    await next();
+});
 
 // Habilitar CORS
 app.UseCors();
@@ -186,8 +228,12 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// Habilitar dashboard de Hangfire (disponible en desarrollo y producción)
-app.UseHangfireDashboard("/hangfire");
+// Habilitar dashboard de Hangfire protegido con autenticación
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAuthorizationFilter() },
+    IsReadOnlyFunc = _ => true
+});
 
 app.MapControllers();
 
@@ -202,3 +248,15 @@ RecurringJob.AddOrUpdate<NotificacionesJob>(
 );
 
 app.Run();
+
+/// <summary>
+/// Filtro de autorización para Hangfire Dashboard - solo usuarios autenticados
+/// </summary>
+public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
+{
+    public bool Authorize(DashboardContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        return httpContext.User.Identity?.IsAuthenticated == true;
+    }
+}
