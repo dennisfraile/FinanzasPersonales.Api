@@ -104,7 +104,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .WithHeaders("Content-Type", "Authorization", "X-Requested-With")
+              .WithHeaders("Content-Type", "Authorization", "X-Requested-With", "x-signalr-user-agent")
               .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
               .AllowCredentials();
     });
