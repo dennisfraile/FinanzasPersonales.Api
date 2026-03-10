@@ -19,5 +19,8 @@ namespace FinanzasPersonales.Api.Dtos
 
         [Required]
         public decimal Monto { get; set; }
+
+        // Relación con cuenta (opcional)
+        public int? CuentaId { get; set; }
     }
 }

@@ -7,8 +7,7 @@ namespace FinanzasPersonales.Api.Dtos
     /// </summary>
     public class ActualizarPerfilDto
     {
-        [Required(ErrorMessage = "El email es requerido.")]
-        [EmailAddress(ErrorMessage = "El formato del email no es válido.")]
-        public required string Email { get; set; }
+        [StringLength(100, ErrorMessage = "El nombre no puede exceder 100 caracteres.")]
+        public string? NombreCompleto { get; set; }
     }
 }

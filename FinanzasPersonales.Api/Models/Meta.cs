@@ -32,5 +32,11 @@ namespace FinanzasPersonales.Api.Models
 
         [ForeignKey("UserId")]
         public virtual IdentityUser User { get; set; } // Propiedad de navegación
+
+        // Relación con Cuenta (opcional: en qué cuenta está el ahorro)
+        public int? CuentaId { get; set; }
+
+        [ForeignKey("CuentaId")]
+        public virtual Cuenta? Cuenta { get; set; }
     }
 }

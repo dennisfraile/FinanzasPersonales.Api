@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FinanzasPersonales.Api.Dtos
 {
     /// <summary>
@@ -5,8 +7,13 @@ namespace FinanzasPersonales.Api.Dtos
     /// </summary>
     public class CreateCategoriaDto
     {
-        public string Nombre { get; set; }
-        public string Tipo { get; set; } // "Ingreso" o "Gasto"
+        [Required(ErrorMessage = "El nombre es requerido")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 100 caracteres")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El tipo es requerido")]
+        [RegularExpression("^(Ingreso|Gasto)$", ErrorMessage = "El tipo debe ser 'Ingreso' o 'Gasto'")]
+        public string Tipo { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -14,8 +21,15 @@ namespace FinanzasPersonales.Api.Dtos
     /// </summary>
     public class UpdateCategoriaDto
     {
+        [Required]
         public int Id { get; set; }
-        public string Nombre { get; set; }
-        public string Tipo { get; set; }
+
+        [Required(ErrorMessage = "El nombre es requerido")]
+        [StringLength(100, MinimumLength = 1, ErrorMessage = "El nombre debe tener entre 1 y 100 caracteres")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "El tipo es requerido")]
+        [RegularExpression("^(Ingreso|Gasto)$", ErrorMessage = "El tipo debe ser 'Ingreso' o 'Gasto'")]
+        public string Tipo { get; set; } = string.Empty;
     }
 }

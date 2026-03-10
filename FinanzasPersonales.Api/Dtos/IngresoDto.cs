@@ -19,6 +19,10 @@ namespace FinanzasPersonales.Api.Dtos
         [Required(ErrorMessage = "El monto es requerido")]
         [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a 0")]
         public decimal Monto { get; set; }
+
+        // Relación con cuenta (opcional)
+        public int? CuentaId { get; set; }
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 
     /// <summary>
@@ -41,6 +45,12 @@ namespace FinanzasPersonales.Api.Dtos
         [Required(ErrorMessage = "El monto es requerido")]
         [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a 0")]
         public decimal Monto { get; set; }
+
+        // Relación con cuenta (opcional)
+        public int? CuentaId { get; set; }
+
+        // Tags asociados  
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 
     /// <summary>
@@ -54,5 +64,7 @@ namespace FinanzasPersonales.Api.Dtos
         public string? CategoriaNombre { get; set; }
         public string? Descripcion { get; set; }
         public decimal Monto { get; set; }
+        public int? CuentaId { get; set; }
+        public List<int> TagIds { get; set; } = new List<int>();
     }
 }

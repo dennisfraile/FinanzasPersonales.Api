@@ -20,6 +20,9 @@ namespace FinanzasPersonales.Api.Dtos
 
         [Range(0, double.MaxValue, ErrorMessage = "El monto restante no puede ser negativo")]
         public decimal MontoRestante { get; set; }
+
+        // Relación con cuenta (opcional: en qué cuenta está el ahorro)
+        public int? CuentaId { get; set; }
     }
 
     /// <summary>
@@ -43,6 +46,9 @@ namespace FinanzasPersonales.Api.Dtos
 
         [Range(0, double.MaxValue, ErrorMessage = "El monto restante no puede ser negativo")]
         public decimal MontoRestante { get; set; }
+
+        // Relación con cuenta (opcional: en qué cuenta está el ahorro)
+        public int? CuentaId { get; set; }
     }
 
     /// <summary>

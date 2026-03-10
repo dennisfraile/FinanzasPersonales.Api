@@ -1,35 +1,30 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Dtos;
-using FinanzasPersonales.Api.Models;
 using System.Security.Claims;
-using System.Globalization;
+using FinanzasPersonales.Api.Services;
 
 namespace FinanzasPersonales.Api.Controllers
 {
     /// <summary>
-    /// API para gestión de reportes y anál íticas financieras.
+    /// API para gestión de reportes y analíticas financieras.
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     public class ReportesController : ControllerBase
     {
-        private readonly FinanzasDbContext _context;
+        private readonly IReportesService _reportesService;
 
-        public ReportesController(FinanzasDbContext context)
+        public ReportesController(IReportesService reportesService)
         {
-            _context = context;
+            _reportesService = reportesService;
         }
 
         /// <summary>
         /// Obtiene un reporte de gastos agrupados por categoría para un mes específico.
         /// </summary>
-        /// <param name="mes">Mes a analizar (1-12). Default: mes actual</param>
-        /// <param name="ano">Año a analizar. Default: año actual</param>
         [HttpGet("gastos-por-categoria")]
         [ProducesResponseType(typeof(List<GastoPorCategoriaDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<GastoPorCategoriaDto>>> GetGastosPorCategoria(
@@ -38,38 +33,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var mesActual = mes ?? DateTime.Now.Month;
-            var anoActual = ano ?? DateTime.Now.Year;
-
-            var inicioMes = new DateTime(anoActual, mesActual, 1);
-            var finMes = inicioMes.AddMonths(1).AddDays(-1);
-
-            // Obtener gastos del mes agrupados por categoría
-            var gastosPorCategoria = await _context.Gastos
-                .Where(g => g.UserId == userId &&
-                           g.Fecha >= inicioMes &&
-                           g.Fecha <= finMes)
-                .GroupBy(g => new { g.CategoriaId, g.Categoria.Nombre })
-                .Select(grupo => new
-                {
-                    CategoriaId = grupo.Key.CategoriaId,
-                    CategoriaNombre = grupo.Key.Nombre,
-                    TotalGastado = grupo.Sum(g => g.Monto),
-                    CantidadTransacciones = grupo.Count()
-                })
-                .OrderByDescending(x => x.TotalGastado)
-                .ToListAsync();
-
-            var totalGeneral = gastosPorCategoria.Sum(x => x.TotalGastado);
-
-            var resultado = gastosPorCategoria.Select(x => new GastoPorCategoriaDto
-            {
-                CategoriaId = x.CategoriaId,
-                CategoriaNombre = x.CategoriaNombre,
-                TotalGastado = x.TotalGastado,
-                CantidadTransacciones = x.CantidadTransacciones,
-                PorcentajeDelTotal = totalGeneral > 0 ? (x.TotalGastado / totalGeneral) * 100 : 0
-            }).ToList();
+            var resultado = await _reportesService.GetGastosPorCategoriaAsync(userId!, mes, ano);
 
             return Ok(resultado);
         }
@@ -77,51 +41,13 @@ namespace FinanzasPersonales.Api.Controllers
         /// <summary>
         /// Obtiene la evolución mensual de ingresos y gastos.
         /// </summary>
-        /// <param name="meses">Cantidad de meses hacia atrás a analizar. Default: 6, Máximo: 12</param>
         [HttpGet("evolucion-mensual")]
         [ProducesResponseType(typeof(List<EvolucionMensualDto>), StatusCodes.Status200OK)]
         public async Task<ActionResult<List<EvolucionMensualDto>>> GetEvolucionMensual([FromQuery] int meses = 6)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Limitar a máximo 12 meses
-            meses = Math.Min(meses, 12);
-
-            var resultado = new List<EvolucionMensualDto>();
-            var fechaActual = DateTime.Now;
-
-            for (int i = meses - 1; i >= 0; i--)
-            {
-                var mes = fechaActual.AddMonths(-i);
-                var inicioMes = new DateTime(mes.Year, mes.Month, 1);
-                var finMes = inicioMes.AddMonths(1).AddDays(-1);
-
-                var ingresos = await _context.Ingresos
-                    .Where(x => x.UserId == userId &&
-                               x.Fecha >= inicioMes &&
-                               x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
-
-                var gastos = await _context.Gastos
-                    .Where(x => x.UserId == userId &&
-                               x.Fecha >= inicioMes &&
-                               x.Fecha <= finMes)
-                    .SumAsync(x => x.Monto);
-
-                var ahorro = ingresos * 0.10m;
-                var balance = ingresos - gastos;
-
-                resultado.Add(new EvolucionMensualDto
-                {
-                    Mes = mes.Month,
-                    Ano = mes.Year,
-                    Periodo = mes.ToString("MMMM yyyy", new CultureInfo("es-ES")),
-                    TotalIngresos = ingresos,
-                    TotalGastos = gastos,
-                    AhorroCalculado = ahorro,
-                    Balance = balance
-                });
-            }
+            var resultado = await _reportesService.GetEvolucionMensualAsync(userId!, meses);
 
             return Ok(resultado);
         }
@@ -129,10 +55,6 @@ namespace FinanzasPersonales.Api.Controllers
         /// <summary>
         /// Compara dos períodos financieros específicos.
         /// </summary>
-        /// <param name="mesActual">Mes del período actual (1-12)</param>
-        /// <param name="anoActual">Año del período actual</param>
-        /// <param name="mesAnterior">Mes del período anterior (1-12)</param>
-        /// <param name="anoAnterior">Año del período anterior</param>
         [HttpGet("comparativa-periodos")]
         [ProducesResponseType(typeof(ComparativaPeriodosDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<ComparativaPeriodosDto>> GetComparativaPeriodos(
@@ -143,65 +65,7 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Defaults: comparar mes actual vs mes anterior
-            var fechaActual = DateTime.Now;
-            var mesA = mesActual ?? fechaActual.Month;
-            var anoA = anoActual ?? fechaActual.Year;
-
-            var fechaAnt = fechaActual.AddMonths(-1);
-            var mesAnt = mesAnterior ?? fechaAnt.Month;
-            var anoAnt = anoAnterior ?? fechaAnt.Year;
-
-            // Período actual
-            var inicioMA = new DateTime(anoA, mesA, 1);
-            var finMA = inicioMA.AddMonths(1).AddDays(-1);
-
-            var ingresosActual = await _context.Ingresos
-                .Where(x => x.UserId == userId && x.Fecha >= inicioMA && x.Fecha <= finMA)
-                .SumAsync(x => x.Monto);
-
-            var gastosActual = await _context.Gastos
-                .Where(x => x.UserId == userId && x.Fecha >= inicioMA && x.Fecha <= finMA)
-                .SumAsync(x => x.Monto);
-
-            // Período anterior
-            var inicioMAnt = new DateTime(anoAnt, mesAnt, 1);
-            var finMAnt = inicioMAnt.AddMonths(1).AddDays(-1);
-
-            var ingresosAnterior = await _context.Ingresos
-                .Where(x => x.UserId == userId && x.Fecha >= inicioMAnt && x.Fecha <= finMAnt)
-                .SumAsync(x => x.Monto);
-
-            var gastosAnterior = await _context.Gastos
-                .Where(x => x.UserId == userId && x.Fecha >= inicioMAnt && x.Fecha <= finMAnt)
-                .SumAsync(x => x.Monto);
-
-            var resultado = new ComparativaPeriodosDto
-            {
-                PeriodoActual = new PeriodoFinanciero
-                {
-                    Descripcion = new DateTime(anoA, mesA, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
-                    TotalIngresos = ingresosActual,
-                    TotalGastos = gastosActual,
-                    Balance = ingresosActual - gastosActual
-                },
-                PeriodoAnterior = new PeriodoFinanciero
-                {
-                    Descripcion = new DateTime(anoAnt, mesAnt, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
-                    TotalIngresos = ingresosAnterior,
-                    TotalGastos = gastosAnterior,
-                    Balance = ingresosAnterior - gastosAnterior
-                },
-                DiferenciaIngresos = ingresosActual - ingresosAnterior,
-                DiferenciaGastos = gastosActual - gastosAnterior,
-                DiferenciaBalance = (ingresosActual - gastosActual) - (ingresosAnterior - gastosAnterior),
-                PorcentajeCambioIngresos = ingresosAnterior != 0
-                    ? ((ingresosActual - ingresosAnterior) / ingresosAnterior) * 100
-                    : 0,
-                PorcentajeCambioGastos = gastosAnterior != 0
-                    ? ((gastosActual - gastosAnterior) / gastosAnterior) * 100
-                    : 0
-            };
+            var resultado = await _reportesService.GetComparativaPeriodosAsync(userId!, mesActual, anoActual, mesAnterior, anoAnterior);
 
             return Ok(resultado);
         }
@@ -209,8 +73,6 @@ namespace FinanzasPersonales.Api.Controllers
         /// <summary>
         /// Obtiene estadísticas generales para un rango de fechas.
         /// </summary>
-        /// <param name="desde">Fecha inicial del rango. Default: inicio del año actual</param>
-        /// <param name="hasta">Fecha final del rango. Default: fecha actual</param>
         [HttpGet("resumen-general")]
         [ProducesResponseType(typeof(ResumenGeneralDto), StatusCodes.Status200OK)]
         public async Task<ActionResult<ResumenGeneralDto>> GetResumenGeneral(
@@ -219,48 +81,112 @@ namespace FinanzasPersonales.Api.Controllers
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var fechaDesde = desde ?? new DateTime(DateTime.Now.Year, 1, 1);
-            var fechaHasta = hasta ?? DateTime.Now;
+            var resultado = await _reportesService.GetResumenGeneralAsync(userId!, desde, hasta);
 
-            var ingresos = await _context.Ingresos
-                .Where(x => x.UserId == userId && x.Fecha >= fechaDesde && x.Fecha <= fechaHasta)
-                .ToListAsync();
+            return Ok(resultado);
+        }
 
-            var gastos = await _context.Gastos
-                .Where(x => x.UserId == userId && x.Fecha >= fechaDesde && x.Fecha <= fechaHasta)
-                .Include(x => x.Categoria)
-                .ToListAsync();
+        /// <summary>
+        /// Obtiene tendencias mensuales de ingresos y gastos
+        /// </summary>
+        [HttpGet("tendencias")]
+        [ProducesResponseType(typeof(TendenciasMensualesDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TendenciasMensualesDto>> GetTendencias([FromQuery] int meses = 6)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var totalIngresos = ingresos.Sum(x => x.Monto);
-            var totalGastos = gastos.Sum(x => x.Monto);
-            var diasConActividad = ingresos.Select(x => x.Fecha.Date)
-                .Union(gastos.Select(x => x.Fecha.Date))
-                .Distinct()
-                .Count();
+            var resultado = await _reportesService.GetTendenciasAsync(userId!, meses);
 
-            var categoriaConMasGasto = gastos
-                .GroupBy(x => x.Categoria.Nombre)
-                .Select(g => new { Categoria = g.Key, Monto = g.Sum(x => x.Monto) })
-                .OrderByDescending(x => x.Monto)
-                .FirstOrDefault();
+            return Ok(resultado);
+        }
 
-            var totalDias = (fechaHasta - fechaDesde).Days + 1;
-            var totalMeses = ((fechaHasta.Year - fechaDesde.Year) * 12) + fechaHasta.Month - fechaDesde.Month + 1;
+        /// <summary>
+        /// Compara el mes actual con el mes anterior
+        /// </summary>
+        [HttpGet("comparativa")]
+        [ProducesResponseType(typeof(ComparativaMesDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ComparativaMesDto>> GetComparativa(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var resultado = new ResumenGeneralDto
-            {
-                PeriodoAnalizado = $"{fechaDesde:dd/MM/yyyy} - {fechaHasta:dd/MM/yyyy}",
-                TotalIngresos = totalIngresos,
-                TotalGastos = totalGastos,
-                Balance = totalIngresos - totalGastos,
-                PromedioIngresosDiario = totalDias > 0 ? totalIngresos / totalDias : 0,
-                PromedioGastosDiario = totalDias > 0 ? totalGastos / totalDias : 0,
-                PromedioIngresosMensual = totalMeses > 0 ? totalIngresos / totalMeses : 0,
-                PromedioGastosMensual = totalMeses > 0 ? totalGastos / totalMeses : 0,
-                DiasConActividad = diasConActividad,
-                CategoriaConMasGasto = categoriaConMasGasto?.Categoria ?? "N/A",
-                MontoCategoriaMasGasto = categoriaConMasGasto?.Monto ?? 0
-            };
+            var resultado = await _reportesService.GetComparativaAsync(userId!, mes, ano);
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Obtiene las categorías con más gastos
+        /// </summary>
+        [HttpGet("top-categorias")]
+        [ProducesResponseType(typeof(TopCategoriasDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<TopCategoriasDto>> GetTopCategorias(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null,
+            [FromQuery] int limite = 5)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var resultado = await _reportesService.GetTopCategoriasAsync(userId!, mes, ano, limite);
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Analiza gastos fijos vs variables
+        /// </summary>
+        [HttpGet("gastos-tipo")]
+        [ProducesResponseType(typeof(GastosTipoDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<GastosTipoDto>> GetGastosTipo(
+            [FromQuery] int? mes = null,
+            [FromQuery] int? ano = null)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var resultado = await _reportesService.GetGastosTipoAsync(userId!, mes, ano);
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Proyecta los gastos del mes actual
+        /// </summary>
+        [HttpGet("proyeccion")]
+        [ProducesResponseType(typeof(ProyeccionGastosDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ProyeccionGastosDto>> GetProyeccion()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var resultado = await _reportesService.GetProyeccionAsync(userId!);
+
+            return Ok(resultado);
+        }
+
+        /// <summary>
+        /// Obtiene datos de calendario con transacciones agrupadas por día para un mes específico.
+        /// </summary>
+        [HttpGet("calendario")]
+        public async Task<ActionResult<CalendarioDto>> GetCalendario(int mes, int ano)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+
+            var resultado = await _reportesService.GetCalendarioAsync(userId, mes, ano);
+
+            return Ok(resultado);
+        }
+
+        [HttpGet("comparar-periodos")]
+        public async Task<ActionResult<ComparacionPeriodosDto>> CompararPeriodos(
+            [FromQuery] DateTime fecha1Inicio,
+            [FromQuery] DateTime fecha1Fin,
+            [FromQuery] DateTime fecha2Inicio,
+            [FromQuery] DateTime fecha2Fin)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var resultado = await _reportesService.CompararPeriodosAsync(userId, fecha1Inicio, fecha1Fin, fecha2Inicio, fecha2Fin);
 
             return Ok(resultado);
         }

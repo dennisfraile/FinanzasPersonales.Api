@@ -34,5 +34,14 @@ namespace FinanzasPersonales.Api.Models
 
         [ForeignKey("UserId")]
         public virtual IdentityUser User { get; set; } // Propiedad de navegación
+
+        // Relación con Cuenta
+        public int? CuentaId { get; set; }
+
+        [ForeignKey("CuentaId")]
+        public virtual Cuenta? Cuenta { get; set; }
+
+        // Relación many-to-many con Tags
+        public ICollection<GastoTag> GastoTags { get; set; } = new List<GastoTag>();
     }
 }

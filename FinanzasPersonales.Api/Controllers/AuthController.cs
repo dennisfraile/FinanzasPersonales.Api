@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using FinanzasPersonales.Api.Dtos; // Nuestros DTOs
-using Microsoft.AspNetCore.Authorization; // Para [AllowAnonymous]
+using FinanzasPersonales.Api.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Google.Apis.Auth;
 
 namespace FinanzasPersonales.Api.Controllers
 {
@@ -16,7 +17,6 @@ namespace FinanzasPersonales.Api.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
 
-        // Inyectamos los servicios de Identity y Configuración
         public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration)
         {
             _userManager = userManager;
@@ -24,103 +24,61 @@ namespace FinanzasPersonales.Api.Controllers
         }
 
         /// <summary>
-        /// Registra un nuevo usuario en el sistema.
+        /// Autentica con Google. Recibe el ID token de Google, valida, crea/busca usuario y retorna JWT.
         /// </summary>
-        [HttpPost("register")]
-        [AllowAnonymous] // Permite el acceso a este endpoint sin un token
-        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Datos de registro inválidos." });
-            }
-
-            var userExists = await _userManager.FindByEmailAsync(registerDto.Email);
-            if (userExists != null)
-            {
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "El correo electrónico ya está en uso." });
-            }
-
-            IdentityUser user = new()
-            {
-                Email = registerDto.Email,
-                UserName = registerDto.Email, // Usamos el email como UserName
-                SecurityStamp = Guid.NewGuid().ToString()
-            };
-
-            var result = await _userManager.CreateAsync(user, registerDto.Password);
-
-            if (!result.Succeeded)
-            {
-                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = $"Error al crear usuario: {errors}" });
-            }
-
-            // Opcional: Asignar un rol por defecto, ej. "Usuario"
-            // await _userManager.AddToRoleAsync(user, "Usuario");
-
-            return Ok(new AuthResponseDto { IsSuccess = true, Message = "¡Usuario creado exitosamente!" });
-        }
-
-        /// <summary>
-        /// Inicia sesión (autentica) un usuario y devuelve un token JWT.
-        /// </summary>
-        [HttpPost("login")]
+        [HttpPost("google")]
         [AllowAnonymous]
         [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
         {
-            if (!ModelState.IsValid)
+            if (string.IsNullOrEmpty(dto.IdToken))
             {
-                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Datos de inicio de sesión inválidos." });
+                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Token de Google requerido." });
             }
 
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
-
-            // Verificamos al usuario Y su contraseña
-            if (user != null && await _userManager.CheckPasswordAsync(user, loginDto.Password))
+            try
             {
-                // --- Generación del Token JWT ---
-                var tokenString = GenerateJwtToken(user);
+                var settings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { _configuration["Google:ClientId"] }
+                };
+
+                var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, settings);
+
+                var user = await _userManager.FindByEmailAsync(payload.Email);
+
+                if (user == null)
+                {
+                    user = new IdentityUser
+                    {
+                        Email = payload.Email,
+                        UserName = payload.Name ?? payload.Email,
+                        EmailConfirmed = true,
+                        SecurityStamp = Guid.NewGuid().ToString()
+                    };
+
+                    var result = await _userManager.CreateAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                        return BadRequest(new AuthResponseDto { IsSuccess = false, Message = $"Error al crear usuario: {errors}" });
+                    }
+                }
+
+                var tokenString = GenerateJwtToken(user, payload);
 
                 return Ok(new AuthResponseDto
                 {
                     IsSuccess = true,
-                    Message = "Inicio de sesión exitoso.",
+                    Message = "Inicio de sesion exitoso.",
                     Token = tokenString
                 });
             }
-
-            // Si el usuario no existe o la contraseña es incorrecta
-            return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Correo o contraseña inválidos." });
-        }
-
-
-        // --- MÉTODO PRIVADO PARA GENERAR EL TOKEN ---
-        private string GenerateJwtToken(IdentityUser user)
-        {
-            var jwtKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var credentials = new SigningCredentials(jwtKey, SecurityAlgorithms.HmacSha256);
-
-            // Los "Claims" son la información que guardamos dentro del token
-            var claims = new[]
+            catch (InvalidJwtException)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id), // ID del usuario (ÚNICO claim de identidad)
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // ID único del token
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddHours(24), // El token expira en 24 horas
-                signingCredentials: credentials);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+                return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Token de Google invalido." });
+            }
         }
 
         /// <summary>
@@ -144,12 +102,13 @@ namespace FinanzasPersonales.Api.Controllers
             {
                 Id = user.Id,
                 Email = user.Email ?? "",
-                UserName = user.UserName
+                UserName = user.UserName,
+                FotoUrl = User.FindFirstValue("FotoUrl")
             });
         }
 
         /// <summary>
-        /// Actualiza el perfil del usuario
+        /// Actualiza el nombre de usuario
         /// </summary>
         [HttpPut("profile")]
         [Authorize]
@@ -180,30 +139,31 @@ namespace FinanzasPersonales.Api.Controllers
             return Ok(new { Message = "Perfil actualizado exitosamente" });
         }
 
-        /// <summary>
-        /// Cambia la contraseña del usuario
-        /// </summary>
-        [HttpPut("change-password")]
-        [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        private string GenerateJwtToken(IdentityUser user, GoogleJsonWebSignature.Payload? googlePayload = null)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
+            var jwtKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
+            var credentials = new SigningCredentials(jwtKey, SecurityAlgorithms.HmacSha256);
 
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-                return NotFound(new { Message = "Usuario no encontrado" });
-
-            var result = await _userManager.ChangePasswordAsync(user, changePasswordDto.CurrentPassword, changePasswordDto.NewPassword);
-            if (!result.Succeeded)
+            var claims = new List<Claim>
             {
-                return BadRequest(new { Message = "Error al cambiar la contraseña", Errors = result.Errors });
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            if (googlePayload?.Picture != null)
+            {
+                claims.Add(new Claim("FotoUrl", googlePayload.Picture));
             }
 
-            return Ok(new { Message = "Contraseña cambiada exitosamente" });
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(24),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

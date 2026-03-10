@@ -38,6 +38,21 @@ namespace FinanzasPersonales.Api.Controllers
         }
 
         /// <summary>
+        /// Obtiene la cantidad de notificaciones no leídas
+        /// </summary>
+        [HttpGet("no-leidas")]
+        [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+        public async Task<ActionResult<int>> GetNoLeidas()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var noLeidas = await _notificacionService.ObtenerNoLeidasAsync(userId);
+            return Ok(noLeidas.Count);
+        }
+
+        /// <summary>
         /// Marca una notificación como leída
         /// </summary>
         [HttpPut("{id}/leer")]

@@ -1,0 +1,261 @@
+using Microsoft.EntityFrameworkCore;
+using FinanzasPersonales.Api.Data;
+using FinanzasPersonales.Api.Dtos;
+using FinanzasPersonales.Api.Models;
+
+namespace FinanzasPersonales.Api.Services
+{
+    public class GastosService : IGastosService
+    {
+        private readonly FinanzasDbContext _context;
+
+        public GastosService(FinanzasDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<PaginatedResponseDto<GastoDto>> GetGastosAsync(
+            string userId,
+            int? categoriaId = null,
+            string? tipo = null,
+            DateTime? desde = null,
+            DateTime? hasta = null,
+            decimal? montoMin = null,
+            decimal? montoMax = null,
+            string? descripcionContiene = null,
+            string ordenarPor = "fecha",
+            string ordenDireccion = "desc",
+            int pagina = 1,
+            int tamañoPagina = 50,
+            List<int>? tagIds = null)
+        {
+            tamañoPagina = Math.Min(tamañoPagina, 100);
+            pagina = Math.Max(pagina, 1);
+
+            var query = _context.Gastos
+                .Where(g => g.UserId == userId)
+                .Include(g => g.Categoria)
+                .Include(g => g.GastoTags)
+                    .ThenInclude(gt => gt.Tag)
+                .AsQueryable();
+
+            if (categoriaId.HasValue)
+                query = query.Where(g => g.CategoriaId == categoriaId.Value);
+
+            if (!string.IsNullOrEmpty(tipo))
+                query = query.Where(g => g.Tipo == tipo);
+
+            if (desde.HasValue)
+                query = query.Where(g => g.Fecha >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(g => g.Fecha <= hasta.Value);
+
+            if (montoMin.HasValue)
+                query = query.Where(g => g.Monto >= montoMin.Value);
+
+            if (montoMax.HasValue)
+                query = query.Where(g => g.Monto <= montoMax.Value);
+
+            if (!string.IsNullOrEmpty(descripcionContiene))
+                query = query.Where(g => g.Descripcion != null && g.Descripcion.Contains(descripcionContiene));
+
+            if (tagIds != null && tagIds.Any())
+            {
+                query = query.Where(g => g.GastoTags.Any(gt => tagIds.Contains(gt.TagId)));
+            }
+
+            query = ordenarPor.ToLower() switch
+            {
+                "monto" => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(g => g.Monto)
+                    : query.OrderByDescending(g => g.Monto),
+                _ => ordenDireccion.ToLower() == "asc"
+                    ? query.OrderBy(g => g.Fecha)
+                    : query.OrderByDescending(g => g.Fecha)
+            };
+
+            var totalItems = await query.CountAsync();
+            var totalPaginas = (int)Math.Ceiling(totalItems / (double)tamañoPagina);
+
+            var items = await query
+                .Skip((pagina - 1) * tamañoPagina)
+                .Take(tamañoPagina)
+                .Select(g => new GastoDto
+                {
+                    Id = g.Id,
+                    Fecha = g.Fecha,
+                    CategoriaId = g.CategoriaId,
+                    CategoriaNombre = g.Categoria != null ? g.Categoria.Nombre : "",
+                    Tipo = g.Tipo ?? "Variable",
+                    Descripcion = g.Descripcion,
+                    Monto = g.Monto,
+                    TagIds = g.GastoTags.Select(gt => gt.TagId).ToList()
+                })
+                .ToListAsync();
+
+            return new PaginatedResponseDto<GastoDto>
+            {
+                Items = items,
+                PaginaActual = pagina,
+                TamañoPagina = tamañoPagina,
+                TotalItems = totalItems,
+                TotalPaginas = totalPaginas,
+                TienePaginaAnterior = pagina > 1,
+                TienePaginaSiguiente = pagina < totalPaginas
+            };
+        }
+
+        public async Task<Gasto?> GetGastoAsync(string userId, int id)
+        {
+            return await _context.Gastos
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+        }
+
+        public async Task<Gasto> CreateGastoAsync(string userId, CreateGastoDto dto)
+        {
+            var gasto = new Gasto
+            {
+                Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc),
+                CategoriaId = dto.CategoriaId,
+                Tipo = dto.Tipo,
+                Descripcion = dto.Descripcion,
+                Monto = dto.Monto,
+                CuentaId = dto.CuentaId,
+                UserId = userId
+            };
+
+            _context.Gastos.Add(gasto);
+
+            if (dto.CuentaId.HasValue)
+            {
+                var cuenta = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    cuenta.BalanceActual -= dto.Monto;
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            if (dto.TagIds != null && dto.TagIds.Any())
+            {
+                var gastoTags = dto.TagIds.Select(tagId => new GastoTag
+                {
+                    GastoId = gasto.Id,
+                    TagId = tagId
+                }).ToList();
+
+                _context.GastoTags.AddRange(gastoTags);
+                await _context.SaveChangesAsync();
+            }
+
+            return gasto;
+        }
+
+        public async Task<bool> UpdateGastoAsync(string userId, int id, UpdateGastoDto dto)
+        {
+            var gastoExistente = await _context.Gastos
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+
+            if (gastoExistente == null)
+                return false;
+
+            gastoExistente.Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc);
+            gastoExistente.CategoriaId = dto.CategoriaId;
+            gastoExistente.Tipo = dto.Tipo;
+            gastoExistente.Descripcion = dto.Descripcion;
+
+            var montoAnterior = gastoExistente.Monto;
+            var cuentaAnteriorId = gastoExistente.CuentaId;
+
+            gastoExistente.Monto = dto.Monto;
+            gastoExistente.CuentaId = dto.CuentaId;
+
+            if (cuentaAnteriorId != dto.CuentaId)
+            {
+                if (cuentaAnteriorId.HasValue)
+                {
+                    var cuentaAnterior = await _context.Cuentas.FindAsync(cuentaAnteriorId.Value);
+                    if (cuentaAnterior != null && cuentaAnterior.UserId == userId)
+                    {
+                        cuentaAnterior.BalanceActual += montoAnterior;
+                    }
+                }
+
+                if (dto.CuentaId.HasValue)
+                {
+                    var cuentaNueva = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                    if (cuentaNueva != null && cuentaNueva.UserId == userId)
+                    {
+                        cuentaNueva.BalanceActual -= dto.Monto;
+                    }
+                }
+            }
+            else if (montoAnterior != dto.Monto && dto.CuentaId.HasValue)
+            {
+                var cuenta = await _context.Cuentas.FindAsync(dto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    var diferencia = dto.Monto - montoAnterior;
+                    cuenta.BalanceActual -= diferencia;
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!_context.Gastos.Any(e => e.Id == id))
+                    return false;
+                else
+                    throw;
+            }
+
+            if (dto.TagIds != null)
+            {
+                var tagsAntiguos = _context.GastoTags.Where(gt => gt.GastoId == id);
+                _context.GastoTags.RemoveRange(tagsAntiguos);
+
+                if (dto.TagIds.Any())
+                {
+                    var nuevosTags = dto.TagIds.Select(tagId => new GastoTag
+                    {
+                        GastoId = id,
+                        TagId = tagId
+                    }).ToList();
+
+                    _context.GastoTags.AddRange(nuevosTags);
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            return true;
+        }
+
+        public async Task<bool> DeleteGastoAsync(string userId, int id)
+        {
+            var gasto = await _context.Gastos
+                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+
+            if (gasto == null)
+                return false;
+
+            if (gasto.CuentaId.HasValue)
+            {
+                var cuenta = await _context.Cuentas.FindAsync(gasto.CuentaId.Value);
+                if (cuenta != null && cuenta.UserId == userId)
+                {
+                    cuenta.BalanceActual += gasto.Monto;
+                }
+            }
+
+            _context.Gastos.Remove(gasto);
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+    }
+}
