@@ -486,18 +486,20 @@ namespace FinanzasPersonales.Api.Services
             var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
 
             var gastos = await _context.Gastos
-                .Include(g => g.Categoria)
                 .Where(g => g.UserId == userId &&
                             g.Fecha >= primerDia &&
                             g.Fecha <= ultimoDia)
                 .ToListAsync();
 
             var ingresos = await _context.Ingresos
-                .Include(i => i.Categoria)
                 .Where(i => i.UserId == userId &&
                             i.Fecha >= primerDia &&
                             i.Fecha <= ultimoDia)
                 .ToListAsync();
+
+            var categorias = await _context.Categorias
+                .Where(c => c.UserId == userId)
+                .ToDictionaryAsync(c => c.Id, c => c.Nombre);
 
             var dias = new List<DiaCalendarioDto>();
 
@@ -517,7 +519,7 @@ namespace FinanzasPersonales.Api.Services
                     Tipo = "Gasto",
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
-                    CategoriaNombre = g.Categoria?.Nombre
+                    CategoriaNombre = categorias.GetValueOrDefault(g.CategoriaId)
                 }));
 
                 transacciones.AddRange(ingresosDelDia.Select(i => new TransaccionSummaryDto
@@ -526,7 +528,7 @@ namespace FinanzasPersonales.Api.Services
                     Tipo = "Ingreso",
                     Descripcion = i.Descripcion,
                     Monto = i.Monto,
-                    CategoriaNombre = i.Categoria?.Nombre
+                    CategoriaNombre = categorias.GetValueOrDefault(i.CategoriaId)
                 }));
 
                 if (transacciones.Any())
