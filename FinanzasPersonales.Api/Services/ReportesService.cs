@@ -14,12 +14,17 @@ namespace FinanzasPersonales.Api.Services
             _context = context;
         }
 
+        private static DateTime UtcDate(int year, int month, int day) =>
+            DateTime.SpecifyKind(new DateTime(year, month, day), DateTimeKind.Utc);
+
+        private static DateTime UtcNow => DateTime.UtcNow;
+
         public async Task<List<GastoPorCategoriaDto>> GetGastosPorCategoriaAsync(string userId, int? mes = null, int? ano = null)
         {
-            var mesActual = mes ?? DateTime.Now.Month;
-            var anoActual = ano ?? DateTime.Now.Year;
+            var mesActual = mes ?? UtcNow.Month;
+            var anoActual = ano ?? UtcNow.Year;
 
-            var inicioMes = new DateTime(anoActual, mesActual, 1);
+            var inicioMes = UtcDate(anoActual, mesActual, 1);
             var finMes = inicioMes.AddMonths(1).AddDays(-1);
 
             var gastosPorCategoria = await _context.Gastos
@@ -52,9 +57,9 @@ namespace FinanzasPersonales.Api.Services
         public async Task<List<EvolucionMensualDto>> GetEvolucionMensualAsync(string userId, int meses = 6)
         {
             meses = Math.Min(meses, 12);
-            var fechaActual = DateTime.Now;
-            var fechaInicio = new DateTime(fechaActual.AddMonths(-(meses - 1)).Year, fechaActual.AddMonths(-(meses - 1)).Month, 1);
-            var fechaFin = new DateTime(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
+            var fechaActual = UtcNow;
+            var fechaInicio = UtcDate(fechaActual.AddMonths(-(meses - 1)).Year, fechaActual.AddMonths(-(meses - 1)).Month, 1);
+            var fechaFin = UtcDate(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
 
             // Batch: 2 queries en vez de 2*meses
             var ingresosPorMes = await _context.Ingresos
@@ -93,7 +98,7 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<ComparativaPeriodosDto> GetComparativaPeriodosAsync(string userId, int? mesActual = null, int? anoActual = null, int? mesAnterior = null, int? anoAnterior = null)
         {
-            var fechaActual = DateTime.Now;
+            var fechaActual = UtcNow;
             var mesA = mesActual ?? fechaActual.Month;
             var anoA = anoActual ?? fechaActual.Year;
 
@@ -102,7 +107,7 @@ namespace FinanzasPersonales.Api.Services
             var anoAnt = anoAnterior ?? fechaAnt.Year;
 
             // Periodo actual
-            var inicioMA = new DateTime(anoA, mesA, 1);
+            var inicioMA = UtcDate(anoA, mesA, 1);
             var finMA = inicioMA.AddMonths(1).AddDays(-1);
 
             var ingresosActualVal = await _context.Ingresos
@@ -114,7 +119,7 @@ namespace FinanzasPersonales.Api.Services
                 .SumAsync(x => x.Monto);
 
             // Periodo anterior
-            var inicioMAnt = new DateTime(anoAnt, mesAnt, 1);
+            var inicioMAnt = UtcDate(anoAnt, mesAnt, 1);
             var finMAnt = inicioMAnt.AddMonths(1).AddDays(-1);
 
             var ingresosAnteriorVal = await _context.Ingresos
@@ -129,14 +134,14 @@ namespace FinanzasPersonales.Api.Services
             {
                 PeriodoActual = new PeriodoFinanciero
                 {
-                    Descripcion = new DateTime(anoA, mesA, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
+                    Descripcion = UtcDate(anoA, mesA, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
                     TotalIngresos = ingresosActualVal,
                     TotalGastos = gastosActualVal,
                     Balance = ingresosActualVal - gastosActualVal
                 },
                 PeriodoAnterior = new PeriodoFinanciero
                 {
-                    Descripcion = new DateTime(anoAnt, mesAnt, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
+                    Descripcion = UtcDate(anoAnt, mesAnt, 1).ToString("MMMM yyyy", new CultureInfo("es-ES")),
                     TotalIngresos = ingresosAnteriorVal,
                     TotalGastos = gastosAnteriorVal,
                     Balance = ingresosAnteriorVal - gastosAnteriorVal
@@ -155,8 +160,8 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<ResumenGeneralDto> GetResumenGeneralAsync(string userId, DateTime? desde = null, DateTime? hasta = null)
         {
-            var fechaDesde = desde ?? new DateTime(DateTime.Now.Year, 1, 1);
-            var fechaHasta = hasta ?? DateTime.Now;
+            var fechaDesde = desde ?? UtcDate(UtcNow.Year, 1, 1);
+            var fechaHasta = hasta ?? UtcNow;
 
             var ingresos = await _context.Ingresos
                 .Where(x => x.UserId == userId && x.Fecha >= fechaDesde && x.Fecha <= fechaHasta)
@@ -203,10 +208,10 @@ namespace FinanzasPersonales.Api.Services
         {
             meses = Math.Min(meses, 12);
 
-            var fechaActual = DateTime.Now;
+            var fechaActual = UtcNow;
             var fechaInicio = fechaActual.AddMonths(-(meses - 1));
-            var inicioMes = new DateTime(fechaInicio.Year, fechaInicio.Month, 1);
-            var finMes = new DateTime(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
+            var inicioMes = UtcDate(fechaInicio.Year, fechaInicio.Month, 1);
+            var finMes = UtcDate(fechaActual.Year, fechaActual.Month, 1).AddMonths(1).AddDays(-1);
 
             // Batch: 2 queries en vez de 2*meses
             var ingresosPorMes = await _context.Ingresos
@@ -252,16 +257,16 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<ComparativaMesDto> GetComparativaAsync(string userId, int? mes = null, int? ano = null)
         {
-            var mesActual = mes ?? DateTime.Now.Month;
-            var anoActual = ano ?? DateTime.Now.Year;
+            var mesActual = mes ?? UtcNow.Month;
+            var anoActual = ano ?? UtcNow.Year;
 
             // Mes actual
-            var inicioActual = new DateTime(anoActual, mesActual, 1);
+            var inicioActual = UtcDate(anoActual, mesActual, 1);
             var finActual = inicioActual.AddMonths(1).AddDays(-1);
 
             // Mes anterior
             var mesAnt = inicioActual.AddMonths(-1);
-            var inicioAnterior = new DateTime(mesAnt.Year, mesAnt.Month, 1);
+            var inicioAnterior = UtcDate(mesAnt.Year, mesAnt.Month, 1);
             var finAnterior = inicioAnterior.AddMonths(1).AddDays(-1);
 
             // Datos mes actual
@@ -339,10 +344,10 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<TopCategoriasDto> GetTopCategoriasAsync(string userId, int? mes = null, int? ano = null, int limite = 5)
         {
-            var mesActual = mes ?? DateTime.Now.Month;
-            var anoActual = ano ?? DateTime.Now.Year;
+            var mesActual = mes ?? UtcNow.Month;
+            var anoActual = ano ?? UtcNow.Year;
 
-            var inicioMes = new DateTime(anoActual, mesActual, 1);
+            var inicioMes = UtcDate(anoActual, mesActual, 1);
             var finMes = inicioMes.AddMonths(1).AddDays(-1);
 
             var gastosPorCategoria = await _context.Gastos
@@ -381,10 +386,10 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<GastosTipoDto> GetGastosTipoAsync(string userId, int? mes = null, int? ano = null)
         {
-            var mesActual = mes ?? DateTime.Now.Month;
-            var anoActual = ano ?? DateTime.Now.Year;
+            var mesActual = mes ?? UtcNow.Month;
+            var anoActual = ano ?? UtcNow.Year;
 
-            var inicioMes = new DateTime(anoActual, mesActual, 1);
+            var inicioMes = UtcDate(anoActual, mesActual, 1);
             var finMes = inicioMes.AddMonths(1).AddDays(-1);
 
             var gastos = await _context.Gastos
@@ -428,8 +433,8 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<ProyeccionGastosDto> GetProyeccionAsync(string userId)
         {
-            var hoy = DateTime.Now;
-            var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
+            var hoy = UtcNow;
+            var inicioMes = UtcDate(hoy.Year, hoy.Month, 1);
             var finMes = inicioMes.AddMonths(1).AddDays(-1);
             var diasTotales = finMes.Day;
             var diasTranscurridos = hoy.Day;
@@ -482,7 +487,7 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<CalendarioDto> GetCalendarioAsync(string userId, int mes, int ano)
         {
-            var primerDia = new DateTime(ano, mes, 1);
+            var primerDia = UtcDate(ano, mes, 1);
             var ultimoDia = primerDia.AddMonths(1).AddDays(-1);
 
             var gastos = await _context.Gastos
