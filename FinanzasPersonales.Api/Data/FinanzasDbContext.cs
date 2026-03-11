@@ -90,6 +90,7 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Cuenta> Cuentas { get; set; }
         public DbSet<Transferencia> Transferencias { get; set; }
         public DbSet<GastoRecurrente> GastosRecurrentes { get; set; }
+        public DbSet<IngresoRecurrente> IngresosRecurrentes { get; set; }
         public DbSet<Adjunto> Adjuntos { get; set; }
 
         // Tags y relaciones many-to-many

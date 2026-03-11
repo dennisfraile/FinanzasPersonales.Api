@@ -93,6 +93,7 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IReportesService, Fin
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITransferenciasService, FinanzasPersonales.Api.Services.TransferenciasService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.ICuentasService, FinanzasPersonales.Api.Services.CuentasService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosRecurrentesService, FinanzasPersonales.Api.Services.GastosRecurrentesService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IIngresosRecurrentesService, FinanzasPersonales.Api.Services.IngresosRecurrentesService>();
 
 // Registrar servicio de almacenamiento de archivos
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IFileStorageService, FinanzasPersonales.Api.Services.LocalFileStorageService>();
