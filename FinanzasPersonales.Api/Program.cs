@@ -12,6 +12,7 @@ using Hangfire.PostgreSql;
 using Hangfire.Dashboard;
 using FinanzasPersonales.Api.Hubs;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,12 +59,17 @@ builder.Services.AddDbContext<FinanzasDbContext>(options =>
 // Configurar ASP.NET Core Identity
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {
-    // Opciones de contraseña (las hacemos flexibles para desarrollo)
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
+    // Política de contraseña segura
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 6; // Contraseña de mínimo 6 caracteres
+    options.Password.RequiredLength = 8;
+
+    // Bloqueo de cuenta tras intentos fallidos
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
 
     // Permitir nombres de usuario no únicos (el email es lo que identifica al usuario)
     options.User.RequireUniqueEmail = true; // Email DEBE ser único
@@ -107,6 +113,9 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IFileStorageService, 
 
 // Configurar CORS desde appsettings.json (restringido a métodos y headers específicos)
 var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" };
+if (allowedOrigins.Length == 0 || allowedOrigins.Any(string.IsNullOrWhiteSpace))
+    throw new InvalidOperationException("CORS: AllowedOrigins must contain at least one valid origin.");
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -116,6 +125,32 @@ builder.Services.AddCors(options =>
               .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
               .AllowCredentials();
     });
+});
+
+// Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Límite global: 100 requests por minuto por IP
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    // Límite estricto para auth: 10 requests por minuto por IP
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
 });
 
 // Registrar jobs
@@ -135,6 +170,11 @@ builder.Services.AddHangfireServer();
 // Agregar SignalR
 builder.Services.AddSignalR();
 
+// Validar JWT Key al iniciar
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+    throw new InvalidOperationException("JWT Key must be configured and at least 32 bytes long.");
+
 // Configurar Autenticación y JWT Bearer
 builder.Services.AddAuthentication(options =>
 {
@@ -151,7 +191,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "")),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
 
         // CRÍTICO: Configurar el mapeo de claims
         NameClaimType = ClaimTypes.NameIdentifier,
@@ -174,10 +214,10 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Limitar tamaño de request body (50MB máximo para uploads)
+// Limitar tamaño de request body (10MB máximo para uploads)
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 52_428_800;
+    options.Limits.MaxRequestBodySize = 10_485_760; // 10MB
 });
 
 var app = builder.Build();
@@ -213,6 +253,10 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
+// HTTPS enforcement
+app.UseHttpsRedirection();
+app.UseHsts();
+
 // Headers de seguridad
 app.Use(async (context, next) =>
 {
@@ -220,11 +264,16 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
     await next();
 });
 
 // Habilitar CORS
 app.UseCors();
+
+// Rate limiting
+app.UseRateLimiter();
 
 app.UseAuthentication(); // 1. Verifica quién eres (autenticación)
 app.UseAuthorization();  // 2. Verifica qué permisos tienes (autorización)
@@ -234,7 +283,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseHttpsRedirection();
 }
 
 // Habilitar dashboard de Hangfire protegido con autenticación

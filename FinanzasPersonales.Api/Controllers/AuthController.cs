@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -12,15 +13,18 @@ namespace FinanzasPersonales.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration)
+        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration, ILogger<AuthController> logger)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _logger = logger;
         }
 
         /// <summary>
@@ -77,6 +81,7 @@ namespace FinanzasPersonales.Api.Controllers
             }
             catch (InvalidJwtException)
             {
+                _logger.LogWarning("Failed Google login attempt with invalid token from IP {IP}", HttpContext.Connection.RemoteIpAddress);
                 return BadRequest(new AuthResponseDto { IsSuccess = false, Message = "Token de Google invalido." });
             }
         }
@@ -160,7 +165,7 @@ namespace FinanzasPersonales.Api.Controllers
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(24),
+                expires: DateTime.UtcNow.AddHours(2),
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

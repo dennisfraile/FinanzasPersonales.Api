@@ -57,11 +57,14 @@ namespace FinanzasPersonales.Api.Services
 
         public async Task<CuentaDto> CreateCuentaAsync(string userId, CuentaCreateDto dto)
         {
+            if (!Enum.TryParse<TipoCuenta>(dto.Tipo, out var tipoCuenta))
+                throw new InvalidOperationException($"Tipo de cuenta inválido: {dto.Tipo}");
+
             var cuenta = new Cuenta
             {
                 UserId = userId,
                 Nombre = dto.Nombre,
-                Tipo = Enum.Parse<TipoCuenta>(dto.Tipo),
+                Tipo = tipoCuenta,
                 BalanceInicial = dto.BalanceInicial,
                 BalanceActual = dto.BalanceInicial,
                 Moneda = dto.Moneda,
