@@ -98,5 +98,16 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(resultado);
         }
+
+        [HttpGet("flujo-caja")]
+        [ProducesResponseType(typeof(FlujoCajaDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<FlujoCajaDto>> GetFlujoCaja()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var resultado = await _dashboardService.GetFlujoCajaAsync(userId);
+            return Ok(resultado);
+        }
     }
 }

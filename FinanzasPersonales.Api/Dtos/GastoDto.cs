@@ -26,6 +26,9 @@ namespace FinanzasPersonales.Api.Dtos
         // Relación con cuenta (opcional)
         public int? CuentaId { get; set; }
 
+        [StringLength(2000, ErrorMessage = "Las notas no pueden exceder 2000 caracteres")]
+        public string? Notas { get; set; }
+
         // Tags asociados
         public List<int> TagIds { get; set; } = new List<int>();
     }
@@ -57,6 +60,9 @@ namespace FinanzasPersonales.Api.Dtos
         // Relación con cuenta (opcional)
         public int? CuentaId { get; set; }
 
+        [StringLength(2000, ErrorMessage = "Las notas no pueden exceder 2000 caracteres")]
+        public string? Notas { get; set; }
+
         // Tags asociados
         public List<int> TagIds { get; set; } = new List<int>();
     }
@@ -74,6 +80,7 @@ namespace FinanzasPersonales.Api.Dtos
         public string? Descripcion { get; set; }
         public decimal Monto { get; set; }
         public int? CuentaId { get; set; }
+        public string? Notas { get; set; }
         public List<int> TagIds { get; set; } = new List<int>();
     }
 }

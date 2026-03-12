@@ -45,6 +45,55 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(t => t.CuentaDestinoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configuración GastoCompartido -> Categoria
+            modelBuilder.Entity<GastoCompartido>()
+                .HasOne(g => g.Categoria)
+                .WithMany()
+                .HasForeignKey(g => g.CategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración ParticipanteGasto -> GastoCompartido (cascade)
+            modelBuilder.Entity<ParticipanteGasto>()
+                .HasOne(p => p.GastoCompartido)
+                .WithMany(g => g.Participantes)
+                .HasForeignKey(p => p.GastoCompartidoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configuración Deuda -> Cuenta
+            modelBuilder.Entity<Deuda>()
+                .HasOne(d => d.Cuenta)
+                .WithMany()
+                .HasForeignKey(d => d.CuentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración PagoDeuda -> Deuda (cascade)
+            modelBuilder.Entity<PagoDeuda>()
+                .HasOne(p => p.Deuda)
+                .WithMany(d => d.Pagos)
+                .HasForeignKey(p => p.DeudaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configuración PlantillaGasto -> Categoria
+            modelBuilder.Entity<PlantillaGasto>()
+                .HasOne(p => p.Categoria)
+                .WithMany()
+                .HasForeignKey(p => p.CategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración ReglaCategoriaAutomatica -> Categoria
+            modelBuilder.Entity<ReglaCategoriaAutomatica>()
+                .HasOne(r => r.Categoria)
+                .WithMany()
+                .HasForeignKey(r => r.CategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración self-referencing para Subcategorías
+            modelBuilder.Entity<Categoria>()
+                .HasOne(c => c.ParentCategoria)
+                .WithMany(c => c.SubCategorias)
+                .HasForeignKey(c => c.ParentCategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Configuración many-to-many para GastoTag
             modelBuilder.Entity<GastoTag>()
                 .HasKey(gt => new { gt.GastoId, gt.TagId });
@@ -92,6 +141,16 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<GastoRecurrente> GastosRecurrentes { get; set; }
         public DbSet<IngresoRecurrente> IngresosRecurrentes { get; set; }
         public DbSet<Adjunto> Adjuntos { get; set; }
+
+        public DbSet<ReglaCategoriaAutomatica> ReglasCategoriaAutomatica { get; set; }
+        public DbSet<ImportacionCsv> ImportacionesCsv { get; set; }
+        public DbSet<PlantillaGasto> PlantillasGasto { get; set; }
+        public DbSet<Deuda> Deudas { get; set; }
+        public DbSet<PagoDeuda> PagosDeuda { get; set; }
+        public DbSet<GastoCompartido> GastosCompartidos { get; set; }
+        public DbSet<ParticipanteGasto> ParticipantesGasto { get; set; }
+        public DbSet<TipoCambio> TiposCambio { get; set; }
+        public DbSet<ReporteProgramado> ReportesProgramados { get; set; }
 
         // Tags y relaciones many-to-many
         public DbSet<Tag> Tags { get; set; }

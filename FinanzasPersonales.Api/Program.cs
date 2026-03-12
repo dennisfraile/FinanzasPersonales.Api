@@ -94,6 +94,13 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITransferenciasServic
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.ICuentasService, FinanzasPersonales.Api.Services.CuentasService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosRecurrentesService, FinanzasPersonales.Api.Services.GastosRecurrentesService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IIngresosRecurrentesService, FinanzasPersonales.Api.Services.IngresosRecurrentesService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IReglasCategoriaService, FinanzasPersonales.Api.Services.ReglasCategoriaService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IImportacionCsvService, FinanzasPersonales.Api.Services.ImportacionCsvService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IPlantillasGastoService, FinanzasPersonales.Api.Services.PlantillasGastoService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IDeudasService, FinanzasPersonales.Api.Services.DeudasService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosCompartidosService, FinanzasPersonales.Api.Services.GastosCompartidosService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITipoCambioService, FinanzasPersonales.Api.Services.TipoCambioService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IReportesProgramadosService, FinanzasPersonales.Api.Services.ReportesProgramadosService>();
 
 // Registrar servicio de almacenamiento de archivos
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IFileStorageService, FinanzasPersonales.Api.Services.LocalFileStorageService>();
@@ -111,8 +118,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Registrar job de notificaciones
+// Registrar jobs
 builder.Services.AddScoped<NotificacionesJob>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>();
 
 // Configurar Hangfire con PostgreSQL
 builder.Services.AddHangfire(configuration => configuration
@@ -246,6 +254,13 @@ RecurringJob.AddOrUpdate<NotificacionesJob>(
     "verificar-alertas-diarias",
     job => job.EjecutarVerificacionesAsync(),
     Cron.Daily(9) // 9:00 AM todos los días
+);
+
+// Programar job de reportes programados (se ejecuta diariamente a las 7:00 AM)
+RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>(
+    "enviar-reportes-programados",
+    job => job.EjecutarEnvioReportesAsync(),
+    Cron.Daily(7) // 7:00 AM todos los días
 );
 
 app.Run();

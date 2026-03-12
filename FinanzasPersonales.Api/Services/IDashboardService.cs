@@ -9,5 +9,6 @@ namespace FinanzasPersonales.Api.Services
         Task<GraficaDto> GetGraficaGastosPorCategoriaAsync(string userId, int? mes = null, int? ano = null);
         Task<GraficaDto> GetGraficaProgresoMetasAsync(string userId);
         Task<DashboardMetricsDto> GetMetricsAsync(string userId);
+        Task<FlujoCajaDto> GetFlujoCajaAsync(string userId);
     }
 }

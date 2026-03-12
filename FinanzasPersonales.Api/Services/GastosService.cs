@@ -90,6 +90,7 @@ namespace FinanzasPersonales.Api.Services
                     Tipo = g.Tipo ?? "Variable",
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
+                    Notas = g.Notas,
                     TagIds = g.GastoTags.Select(gt => gt.TagId).ToList()
                 })
                 .ToListAsync();
@@ -128,6 +129,7 @@ namespace FinanzasPersonales.Api.Services
                 Descripcion = dto.Descripcion,
                 Monto = dto.Monto,
                 CuentaId = dto.CuentaId,
+                Notas = dto.Notas,
                 UserId = userId
             };
 
@@ -145,7 +147,15 @@ namespace FinanzasPersonales.Api.Services
 
             if (dto.TagIds != null && dto.TagIds.Any())
             {
-                var gastoTags = dto.TagIds.Select(tagId => new GastoTag
+                var tagsValidos = await _context.Tags
+                    .Where(t => t.UserId == userId && dto.TagIds.Contains(t.Id))
+                    .Select(t => t.Id)
+                    .ToListAsync();
+
+                if (tagsValidos.Count != dto.TagIds.Distinct().Count())
+                    throw new InvalidOperationException("Uno o más tags no existen o no pertenecen al usuario.");
+
+                var gastoTags = tagsValidos.Select(tagId => new GastoTag
                 {
                     GastoId = gasto.Id,
                     TagId = tagId
@@ -170,6 +180,7 @@ namespace FinanzasPersonales.Api.Services
             gastoExistente.CategoriaId = dto.CategoriaId;
             gastoExistente.Tipo = dto.Tipo;
             gastoExistente.Descripcion = dto.Descripcion;
+            gastoExistente.Notas = dto.Notas;
 
             var montoAnterior = gastoExistente.Monto;
             var cuentaAnteriorId = gastoExistente.CuentaId;
@@ -226,7 +237,15 @@ namespace FinanzasPersonales.Api.Services
 
                 if (dto.TagIds.Any())
                 {
-                    var nuevosTags = dto.TagIds.Select(tagId => new GastoTag
+                    var tagsValidos = await _context.Tags
+                        .Where(t => t.UserId == userId && dto.TagIds.Contains(t.Id))
+                        .Select(t => t.Id)
+                        .ToListAsync();
+
+                    if (tagsValidos.Count != dto.TagIds.Distinct().Count())
+                        throw new InvalidOperationException("Uno o más tags no existen o no pertenecen al usuario.");
+
+                    var nuevosTags = tagsValidos.Select(tagId => new GastoTag
                     {
                         GastoId = id,
                         TagId = tagId

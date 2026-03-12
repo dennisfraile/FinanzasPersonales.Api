@@ -23,5 +23,13 @@ namespace FinanzasPersonales.Api.Models
 
         [ForeignKey("UserId")]
         public virtual IdentityUser User { get; set; }
+
+        // Subcategorías
+        public int? ParentCategoriaId { get; set; }
+
+        [ForeignKey("ParentCategoriaId")]
+        public virtual Categoria? ParentCategoria { get; set; }
+
+        public virtual ICollection<Categoria> SubCategorias { get; set; } = new List<Categoria>();
     }
 }

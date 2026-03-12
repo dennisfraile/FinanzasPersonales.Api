@@ -14,6 +14,8 @@ namespace FinanzasPersonales.Api.Dtos
         [Required(ErrorMessage = "El tipo es requerido")]
         [RegularExpression("^(Ingreso|Gasto)$", ErrorMessage = "El tipo debe ser 'Ingreso' o 'Gasto'")]
         public string Tipo { get; set; } = string.Empty;
+
+        public int? ParentCategoriaId { get; set; }
     }
 
     /// <summary>
@@ -31,5 +33,20 @@ namespace FinanzasPersonales.Api.Dtos
         [Required(ErrorMessage = "El tipo es requerido")]
         [RegularExpression("^(Ingreso|Gasto)$", ErrorMessage = "El tipo debe ser 'Ingreso' o 'Gasto'")]
         public string Tipo { get; set; } = string.Empty;
+
+        public int? ParentCategoriaId { get; set; }
+    }
+
+    /// <summary>
+    /// DTO de respuesta con información jerárquica
+    /// </summary>
+    public class CategoriaArbolDto
+    {
+        public int Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Tipo { get; set; } = string.Empty;
+        public int? ParentCategoriaId { get; set; }
+        public string? ParentCategoriaNombre { get; set; }
+        public List<CategoriaArbolDto> SubCategorias { get; set; } = new();
     }
 }

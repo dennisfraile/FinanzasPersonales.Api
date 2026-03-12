@@ -66,6 +66,61 @@ namespace FinanzasPersonales.Api.Services
             await SendEmailAsync(email, subject, body);
         }
 
+        public async Task SendReportePdfAsync(string email, byte[] pdfBytes, string periodo)
+        {
+            var subject = $"Reporte Financiero - {periodo}";
+            var body = $@"
+                <h2>Reporte Financiero</h2>
+                <p>Adjunto encontrarás tu reporte financiero correspondiente al período: <strong>{periodo}</strong>.</p>
+                <p>Este reporte fue generado automáticamente según tu configuración de reportes programados.</p>
+            ";
+
+            await SendEmailWithAttachmentAsync(email, subject, body, pdfBytes, $"Reporte_{DateTime.UtcNow:yyyyMMdd}.pdf", "application/pdf");
+        }
+
+        private async Task SendEmailWithAttachmentAsync(string toEmail, string subject, string htmlBody, byte[] attachmentBytes, string attachmentName, string contentType)
+        {
+            try
+            {
+                var smtpServer = _configuration["EmailSettings:SmtpServer"];
+                var smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"] ?? "587");
+                var senderEmail = _configuration["EmailSettings:SenderEmail"];
+                var senderName = _configuration["EmailSettings:SenderName"];
+                var username = _configuration["EmailSettings:Username"];
+                var password = _configuration["EmailSettings:Password"];
+                var enableSsl = bool.Parse(_configuration["EmailSettings:EnableSsl"] ?? "true");
+
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress(senderName, senderEmail));
+                message.To.Add(new MailboxAddress("", toEmail));
+                message.Subject = subject;
+
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = htmlBody
+                };
+                bodyBuilder.Attachments.Add(attachmentName, attachmentBytes, new MimeKit.ContentType(contentType.Split('/')[0], contentType.Split('/')[1]));
+                message.Body = bodyBuilder.ToMessageBody();
+
+                using var client = new SmtpClient();
+                await client.ConnectAsync(smtpServer, smtpPort, enableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
+
+                if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+                {
+                    await client.AuthenticateAsync(username, password);
+                }
+
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+
+                _logger.LogInformation($"Email con adjunto enviado exitosamente a {toEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error al enviar email con adjunto a {toEmail}: {ex.Message}");
+            }
+        }
+
         private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
         {
             try
