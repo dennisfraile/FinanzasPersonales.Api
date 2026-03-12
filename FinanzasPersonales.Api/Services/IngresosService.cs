@@ -135,7 +135,15 @@ namespace FinanzasPersonales.Api.Services
 
             if (dto.TagIds != null && dto.TagIds.Any())
             {
-                var ingresoTags = dto.TagIds.Select(tagId => new IngresoTag
+                var tagsValidos = await _context.Tags
+                    .Where(t => t.UserId == userId && dto.TagIds.Contains(t.Id))
+                    .Select(t => t.Id)
+                    .ToListAsync();
+
+                if (tagsValidos.Count != dto.TagIds.Distinct().Count())
+                    throw new InvalidOperationException("Uno o más tags no existen o no pertenecen al usuario.");
+
+                var ingresoTags = tagsValidos.Select(tagId => new IngresoTag
                 {
                     IngresoId = ingreso.Id,
                     TagId = tagId
@@ -215,7 +223,15 @@ namespace FinanzasPersonales.Api.Services
 
                 if (dto.TagIds.Any())
                 {
-                    var nuevosTags = dto.TagIds.Select(tagId => new IngresoTag
+                    var tagsValidos = await _context.Tags
+                        .Where(t => t.UserId == userId && dto.TagIds.Contains(t.Id))
+                        .Select(t => t.Id)
+                        .ToListAsync();
+
+                    if (tagsValidos.Count != dto.TagIds.Distinct().Count())
+                        throw new InvalidOperationException("Uno o más tags no existen o no pertenecen al usuario.");
+
+                    var nuevosTags = tagsValidos.Select(tagId => new IngresoTag
                     {
                         IngresoId = id,
                         TagId = tagId
