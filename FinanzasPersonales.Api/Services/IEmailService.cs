@@ -19,5 +19,10 @@ namespace FinanzasPersonales.Api.Services
         /// Envía felicitación por meta cumplida
         /// </summary>
         Task SendMetaCumplidaAsync(string email, string metaNombre, decimal montoTotal);
+
+        /// <summary>
+        /// Envía un reporte financiero en PDF por email
+        /// </summary>
+        Task SendReportePdfAsync(string email, byte[] pdfBytes, string periodo);
     }
 }

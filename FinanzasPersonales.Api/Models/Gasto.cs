@@ -41,6 +41,19 @@ namespace FinanzasPersonales.Api.Models
         [ForeignKey("CuentaId")]
         public virtual Cuenta? Cuenta { get; set; }
 
+        [StringLength(2000)]
+        public string? Notas { get; set; }
+
+        // Multi-moneda
+        [StringLength(10)]
+        public string? Moneda { get; set; }
+
+        [Column(TypeName = "decimal(18, 6)")]
+        public decimal? TipoCambioUsado { get; set; }
+
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal? MontoConvertido { get; set; }
+
         // Relación many-to-many con Tags
         public ICollection<GastoTag> GastoTags { get; set; } = new List<GastoTag>();
     }

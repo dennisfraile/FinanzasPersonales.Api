@@ -81,6 +81,7 @@ namespace FinanzasPersonales.Api.Services
                     CategoriaNombre = i.Categoria != null ? i.Categoria.Nombre : "",
                     Descripcion = i.Descripcion,
                     Monto = i.Monto,
+                    Notas = i.Notas,
                     TagIds = i.IngresoTags.Select(it => it.TagId).ToList()
                 })
                 .ToListAsync();
@@ -118,6 +119,7 @@ namespace FinanzasPersonales.Api.Services
                 Descripcion = dto.Descripcion,
                 Monto = dto.Monto,
                 CuentaId = dto.CuentaId,
+                Notas = dto.Notas,
                 UserId = userId
             };
 
@@ -167,6 +169,7 @@ namespace FinanzasPersonales.Api.Services
             ingresoExistente.Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc);
             ingresoExistente.CategoriaId = dto.CategoriaId;
             ingresoExistente.Descripcion = dto.Descripcion;
+            ingresoExistente.Notas = dto.Notas;
 
             var montoAnterior = ingresoExistente.Monto;
             var cuentaAnteriorId = ingresoExistente.CuentaId;

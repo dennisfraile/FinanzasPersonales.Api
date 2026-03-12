@@ -3,6 +3,7 @@ using System;
 using FinanzasPersonales.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanzasPersonales.Api.Migrations
 {
     [DbContext(typeof(FinanzasDbContext))]
-    partial class FinanzasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312162635_AgregarMultiMoneda")]
+    partial class AgregarMultiMoneda
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -974,49 +977,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("ReglasCategoriaAutomatica");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReporteProgramado", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("EmailDestino")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Frecuencia")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("SeccionesIncluir")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("UltimoEnvio")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ReportesProgramados");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -1654,17 +1614,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReporteProgramado", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("User");
                 });

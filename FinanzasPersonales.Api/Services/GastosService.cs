@@ -90,6 +90,7 @@ namespace FinanzasPersonales.Api.Services
                     Tipo = g.Tipo ?? "Variable",
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
+                    Notas = g.Notas,
                     TagIds = g.GastoTags.Select(gt => gt.TagId).ToList()
                 })
                 .ToListAsync();
@@ -128,6 +129,7 @@ namespace FinanzasPersonales.Api.Services
                 Descripcion = dto.Descripcion,
                 Monto = dto.Monto,
                 CuentaId = dto.CuentaId,
+                Notas = dto.Notas,
                 UserId = userId
             };
 
@@ -178,6 +180,7 @@ namespace FinanzasPersonales.Api.Services
             gastoExistente.CategoriaId = dto.CategoriaId;
             gastoExistente.Tipo = dto.Tipo;
             gastoExistente.Descripcion = dto.Descripcion;
+            gastoExistente.Notas = dto.Notas;
 
             var montoAnterior = gastoExistente.Monto;
             var cuentaAnteriorId = gastoExistente.CuentaId;

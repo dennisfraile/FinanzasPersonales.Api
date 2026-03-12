@@ -3,6 +3,7 @@ using System;
 using FinanzasPersonales.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanzasPersonales.Api.Migrations
 {
     [DbContext(typeof(FinanzasDbContext))]
-    partial class FinanzasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312152840_AgregarNotasTransacciones")]
+    partial class AgregarNotasTransacciones
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -83,9 +86,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int?>("ParentCategoriaId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -96,8 +96,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ParentCategoriaId");
 
                     b.HasIndex("UserId");
 
@@ -112,17 +110,8 @@ namespace FinanzasPersonales.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AlertaBalanceBajo")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("AlertaPagoRecurrente")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("AlertasPresupuesto")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("DiasAntesPagoRecurrente")
-                        .HasColumnType("integer");
 
                     b.Property<decimal>("FactorGastoInusual")
                         .HasColumnType("decimal(3, 1)");
@@ -135,9 +124,6 @@ namespace FinanzasPersonales.Api.Migrations
 
                     b.Property<bool>("ResumenMensual")
                         .HasColumnType("boolean");
-
-                    b.Property<decimal>("UmbralBalanceBajo")
-                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<int>("UmbralMeta")
                         .HasColumnType("integer");
@@ -259,71 +245,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("Cuentas");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.Deuda", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activa")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("CuentaId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("DiaDePago")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaInicio")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaVencimiento")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("MontoOriginal")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Notas")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<decimal?>("PagoMinimo")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal>("SaldoActual")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal>("TasaInteres")
-                        .HasColumnType("decimal(5, 2)");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CuentaId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Deudas");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
                 {
                     b.Property<int>("Id")
@@ -345,14 +266,7 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Moneda")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<decimal>("Monto")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal?>("MontoConvertido")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("Notas")
@@ -362,9 +276,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Property<string>("Tipo")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<decimal?>("TipoCambioUsado")
-                        .HasColumnType("decimal(18, 6)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -379,49 +290,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Gastos");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoCompartido", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CategoriaId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Descripcion")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("MetodoDivision")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<decimal>("MontoTotal")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoriaId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("GastosCompartidos");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoRecurrente", b =>
@@ -494,50 +362,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("GastoTags");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ImportacionCsv", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Estado")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime>("FechaImportacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("FilasDuplicadas")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("FilasError")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("FilasImportadas")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("NombreArchivo")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("TotalFilas")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ImportacionesCsv");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Ingreso", b =>
                 {
                     b.Property<int>("Id")
@@ -559,22 +383,12 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Moneda")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
                     b.Property<decimal>("Monto")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal?>("MontoConvertido")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("Notas")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
-
-                    b.Property<decimal?>("TipoCambioUsado")
-                        .HasColumnType("decimal(18, 6)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -751,143 +565,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("Notificaciones");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.PagoDeuda", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("DeudaId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("Monto")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal?>("MontoCapital")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal?>("MontoInteres")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeudaId");
-
-                    b.ToTable("PagosDeuda");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ParticipanteGasto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("FechaLiquidacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("GastoCompartidoId")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Liquidado")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("MontoAsignado")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<decimal>("MontoPagado")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GastoCompartidoId");
-
-                    b.ToTable("ParticipantesGasto");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.PlantillaGasto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CategoriaId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Color")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<int?>("CuentaId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Descripcion")
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Icono")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<decimal?>("Monto")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.Property<string>("Nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<int>("OrdenDisplay")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Tipo")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("VecesUsada")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoriaId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("PlantillasGasto");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Presupuesto", b =>
                 {
                     b.Property<int>("Id")
@@ -926,97 +603,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("Presupuestos");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReglaCategoriaAutomatica", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activa")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("CategoriaId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Patron")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int>("Prioridad")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TipoCoincidencia")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("TipoTransaccion")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoriaId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ReglasCategoriaAutomatica");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReporteProgramado", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("EmailDestino")
-                        .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Frecuencia")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("SeccionesIncluir")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime?>("UltimoEnvio")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ReportesProgramados");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -1045,40 +631,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Tags");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.TipoCambio", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Fuente")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("MonedaDestino")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("MonedaOrigen")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<decimal>("Tasa")
-                        .HasColumnType("decimal(18, 6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TiposCambio");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Transferencia", b =>
@@ -1333,18 +885,11 @@ namespace FinanzasPersonales.Api.Migrations
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Categoria", b =>
                 {
-                    b.HasOne("FinanzasPersonales.Api.Models.Categoria", "ParentCategoria")
-                        .WithMany("SubCategorias")
-                        .HasForeignKey("ParentCategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ParentCategoria");
 
                     b.Navigation("User");
                 });
@@ -1382,24 +927,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.Deuda", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.Cuenta", "Cuenta")
-                        .WithMany()
-                        .HasForeignKey("CuentaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cuenta");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
                 {
                     b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
@@ -1421,24 +948,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("Cuenta");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoCompartido", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
 
                     b.Navigation("User");
                 });
@@ -1477,17 +986,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("Gasto");
 
                     b.Navigation("Tag");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ImportacionCsv", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Ingreso", b =>
@@ -1579,47 +1077,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.PagoDeuda", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.Deuda", "Deuda")
-                        .WithMany("Pagos")
-                        .HasForeignKey("DeudaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Deuda");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ParticipanteGasto", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.GastoCompartido", "GastoCompartido")
-                        .WithMany("Participantes")
-                        .HasForeignKey("GastoCompartidoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GastoCompartido");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.PlantillaGasto", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Presupuesto", b =>
                 {
                     b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
@@ -1635,36 +1092,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Categoria");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReglaCategoriaAutomatica", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.Categoria", "Categoria")
-                        .WithMany()
-                        .HasForeignKey("CategoriaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.ReporteProgramado", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -1747,11 +1174,6 @@ namespace FinanzasPersonales.Api.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.Categoria", b =>
-                {
-                    b.Navigation("SubCategorias");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Cuenta", b =>
                 {
                     b.Navigation("Gastos");
@@ -1763,19 +1185,9 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("TransferenciasOrigen");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.Deuda", b =>
-                {
-                    b.Navigation("Pagos");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Gasto", b =>
                 {
                     b.Navigation("GastoTags");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoCompartido", b =>
-                {
-                    b.Navigation("Participantes");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.Ingreso", b =>

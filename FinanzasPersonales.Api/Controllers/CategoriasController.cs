@@ -49,6 +49,43 @@ namespace FinanzasPersonales.Api.Controllers
         }
 
         /// <summary>
+        /// Obtiene las categorías organizadas en estructura de árbol (padre → hijos).
+        /// </summary>
+        [HttpGet("arbol")]
+        [ProducesResponseType(typeof(IEnumerable<CategoriaArbolDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<CategoriaArbolDto>>> GetCategoriasArbol()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var categorias = await _context.Categorias
+                .Where(c => c.UserId == userId)
+                .Include(c => c.SubCategorias)
+                .ToListAsync();
+
+            var arbol = categorias
+                .Where(c => c.ParentCategoriaId == null)
+                .Select(c => new CategoriaArbolDto
+                {
+                    Id = c.Id,
+                    Nombre = c.Nombre,
+                    Tipo = c.Tipo,
+                    ParentCategoriaId = null,
+                    ParentCategoriaNombre = null,
+                    SubCategorias = c.SubCategorias.Select(sc => new CategoriaArbolDto
+                    {
+                        Id = sc.Id,
+                        Nombre = sc.Nombre,
+                        Tipo = sc.Tipo,
+                        ParentCategoriaId = c.Id,
+                        ParentCategoriaNombre = c.Nombre
+                    }).ToList()
+                })
+                .ToList();
+
+            return Ok(arbol);
+        }
+
+        /// <summary>
         /// Obtiene una categoría específica por su ID.
         /// </summary>
         /// <param name="id">El ID de la categoría a buscar.</param>
@@ -95,10 +132,24 @@ namespace FinanzasPersonales.Api.Controllers
                 return BadRequest($"El usuario con ID {userId} no existe en la base de datos");
             }
 
+            // Validar subcategoría
+            if (dto.ParentCategoriaId.HasValue)
+            {
+                var parent = await _context.Categorias
+                    .FirstOrDefaultAsync(c => c.Id == dto.ParentCategoriaId.Value && c.UserId == userId);
+                if (parent == null)
+                    return BadRequest("La categoría padre no existe o no pertenece al usuario.");
+                if (parent.Tipo != dto.Tipo)
+                    return BadRequest("La subcategoría debe tener el mismo tipo que la categoría padre.");
+                if (parent.ParentCategoriaId.HasValue)
+                    return BadRequest("Solo se permite un nivel de subcategorías.");
+            }
+
             var categoria = new Categoria
             {
                 Nombre = dto.Nombre,
                 Tipo = dto.Tipo,
+                ParentCategoriaId = dto.ParentCategoriaId,
                 UserId = userId
             };
 
@@ -135,9 +186,25 @@ namespace FinanzasPersonales.Api.Controllers
                 return NotFound("La categoría no existe o no pertenece a este usuario.");
             }
 
+            // Validar subcategoría en update
+            if (dto.ParentCategoriaId.HasValue)
+            {
+                if (dto.ParentCategoriaId.Value == id)
+                    return BadRequest("Una categoría no puede ser su propia subcategoría.");
+                var parent = await _context.Categorias
+                    .FirstOrDefaultAsync(c => c.Id == dto.ParentCategoriaId.Value && c.UserId == userId);
+                if (parent == null)
+                    return BadRequest("La categoría padre no existe o no pertenece al usuario.");
+                if (parent.Tipo != dto.Tipo)
+                    return BadRequest("La subcategoría debe tener el mismo tipo que la categoría padre.");
+                if (parent.ParentCategoriaId.HasValue)
+                    return BadRequest("Solo se permite un nivel de subcategorías.");
+            }
+
             // Actualizamos solo los campos permitidos
             categoriaExistente.Nombre = dto.Nombre;
             categoriaExistente.Tipo = dto.Tipo;
+            categoriaExistente.ParentCategoriaId = dto.ParentCategoriaId;
 
             try
             {

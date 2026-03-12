@@ -335,5 +335,95 @@ namespace FinanzasPersonales.Api.Services
                 Top5Categorias = top5
             };
         }
+        public async Task<FlujoCajaDto> GetFlujoCajaAsync(string userId)
+        {
+            var balanceTotal = await _context.Cuentas
+                .Where(c => c.UserId == userId && c.Activa)
+                .SumAsync(c => (decimal?)c.BalanceActual) ?? 0;
+
+            var proyecciones = new List<ProyeccionFlujoCajaDto>();
+
+            foreach (var dias in new[] { 30, 60, 90 })
+            {
+                var ahora = DateTime.UtcNow;
+                var hasta = ahora.AddDays(dias);
+
+                // Ingresos recurrentes esperados
+                var ingresosRecurrentes = await _context.IngresosRecurrentes
+                    .Where(ir => ir.UserId == userId && ir.Activo && ir.ProximaFecha <= hasta)
+                    .ToListAsync();
+
+                decimal ingresosEsperados = 0;
+                foreach (var ir in ingresosRecurrentes)
+                {
+                    var fecha = ir.ProximaFecha;
+                    while (fecha <= hasta)
+                    {
+                        ingresosEsperados += ir.Monto;
+                        fecha = ir.Frecuencia switch
+                        {
+                            "Semanal" => fecha.AddDays(7),
+                            "Quincenal" => fecha.AddDays(15),
+                            "Mensual" => fecha.AddMonths(1),
+                            "Anual" => fecha.AddYears(1),
+                            _ => fecha.AddMonths(1)
+                        };
+                    }
+                }
+
+                // Gastos recurrentes esperados
+                var gastosRecurrentes = await _context.GastosRecurrentes
+                    .Where(gr => gr.UserId == userId && gr.Activo && gr.ProximaFecha <= hasta)
+                    .ToListAsync();
+
+                decimal gastosEsperados = 0;
+                foreach (var gr in gastosRecurrentes)
+                {
+                    var fecha = gr.ProximaFecha;
+                    while (fecha <= hasta)
+                    {
+                        gastosEsperados += gr.Monto;
+                        fecha = gr.Frecuencia switch
+                        {
+                            "Semanal" => fecha.AddDays(7),
+                            "Quincenal" => fecha.AddDays(15),
+                            "Mensual" => fecha.AddMonths(1),
+                            "Anual" => fecha.AddYears(1),
+                            _ => fecha.AddMonths(1)
+                        };
+                    }
+                }
+
+                // Pagos de deuda esperados
+                var deudasActivas = await _context.Deudas
+                    .Where(d => d.UserId == userId && d.Activa && d.PagoMinimo.HasValue)
+                    .ToListAsync();
+
+                decimal pagosDeuda = 0;
+                foreach (var deuda in deudasActivas)
+                {
+                    // Estimar cuántos pagos mensuales caben en el periodo
+                    var mesesEnPeriodo = (int)Math.Ceiling(dias / 30.0);
+                    pagosDeuda += (deuda.PagoMinimo ?? 0) * mesesEnPeriodo;
+                }
+
+                proyecciones.Add(new ProyeccionFlujoCajaDto
+                {
+                    Periodo = $"{dias} días",
+                    Dias = dias,
+                    FechaHasta = hasta,
+                    IngresosEsperados = ingresosEsperados,
+                    GastosEsperados = gastosEsperados,
+                    PagosDeudaEsperados = pagosDeuda,
+                    BalanceProyectado = balanceTotal + ingresosEsperados - gastosEsperados - pagosDeuda
+                });
+            }
+
+            return new FlujoCajaDto
+            {
+                BalanceActualTotal = balanceTotal,
+                Proyecciones = proyecciones
+            };
+        }
     }
 }

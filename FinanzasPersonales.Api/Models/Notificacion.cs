@@ -90,5 +90,16 @@ namespace FinanzasPersonales.Api.Models
         [Range(1.5, 5.0)]
         [Column(TypeName = "decimal(3, 1)")]
         public decimal FactorGastoInusual { get; set; } = 2.0m;
+
+        // Alertas extendidas
+        public bool AlertaPagoRecurrente { get; set; } = true;
+
+        [Range(1, 15)]
+        public int DiasAntesPagoRecurrente { get; set; } = 3;
+
+        public bool AlertaBalanceBajo { get; set; } = false;
+
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal UmbralBalanceBajo { get; set; } = 0;
     }
 }
