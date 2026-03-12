@@ -83,7 +83,7 @@ namespace FinanzasPersonales.Api.Services
         {
             try
             {
-                var fullPath = Path.Combine(_basePath, filePath);
+                var fullPath = GetSafePath(filePath);
 
                 if (!File.Exists(fullPath))
                 {
@@ -103,7 +103,7 @@ namespace FinanzasPersonales.Api.Services
         {
             try
             {
-                var fullPath = Path.Combine(_basePath, filePath);
+                var fullPath = GetSafePath(filePath);
 
                 if (File.Exists(fullPath))
                 {
@@ -122,8 +122,21 @@ namespace FinanzasPersonales.Api.Services
 
         public Task<bool> FileExistsAsync(string filePath)
         {
-            var fullPath = Path.Combine(_basePath, filePath);
+            var fullPath = GetSafePath(filePath);
             return Task.FromResult(File.Exists(fullPath));
+        }
+
+        /// <summary>
+        /// Validates that the resolved path stays within the uploads directory (prevents path traversal)
+        /// </summary>
+        private string GetSafePath(string filePath)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(_basePath, filePath));
+            if (!fullPath.StartsWith(_basePath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Invalid file path.");
+            }
+            return fullPath;
         }
     }
 }

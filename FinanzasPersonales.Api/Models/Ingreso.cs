@@ -42,7 +42,8 @@ namespace FinanzasPersonales.Api.Models
         public string? Notas { get; set; }
 
         // Multi-moneda
-        [StringLength(10)]
+        [StringLength(3)]
+        [RegularExpression(@"^[A-Z]{3}$", ErrorMessage = "Moneda debe ser un código ISO 4217 de 3 letras (ej: USD, EUR).")]
         public string? Moneda { get; set; }
 
         [Column(TypeName = "decimal(18, 6)")]

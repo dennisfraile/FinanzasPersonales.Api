@@ -14,6 +14,7 @@ namespace FinanzasPersonales.Api.Controllers
     public class ImportacionController : ControllerBase
     {
         private readonly IImportacionCsvService _importService;
+        private const long MaxCsvFileSize = 5 * 1024 * 1024; // 5MB
 
         public ImportacionController(IImportacionCsvService importService)
         {
@@ -31,6 +32,13 @@ namespace FinanzasPersonales.Api.Controllers
             if (archivo == null || archivo.Length == 0)
                 return BadRequest("Debe subir un archivo CSV.");
 
+            if (archivo.Length > MaxCsvFileSize)
+                return BadRequest("El archivo CSV excede el tamaño máximo de 5MB.");
+
+            var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
+            if (extension != ".csv")
+                return BadRequest("Solo se permiten archivos CSV.");
+
             using var stream = archivo.OpenReadStream();
             var result = await _importService.PreviewCsvAsync(stream);
             return Ok(result);
@@ -46,6 +54,9 @@ namespace FinanzasPersonales.Api.Controllers
         {
             if (archivo == null || archivo.Length == 0)
                 return BadRequest("Debe subir un archivo CSV.");
+
+            if (archivo.Length > MaxCsvFileSize)
+                return BadRequest("El archivo CSV excede el tamaño máximo de 5MB.");
 
             var importRequest = JsonSerializer.Deserialize<CsvImportRequestDto>(request, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (importRequest == null)
@@ -67,6 +78,9 @@ namespace FinanzasPersonales.Api.Controllers
         {
             if (archivo == null || archivo.Length == 0)
                 return BadRequest("Debe subir un archivo CSV.");
+
+            if (archivo.Length > MaxCsvFileSize)
+                return BadRequest("El archivo CSV excede el tamaño máximo de 5MB.");
 
             var importRequest = JsonSerializer.Deserialize<CsvImportRequestDto>(request, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (importRequest == null)

@@ -87,10 +87,10 @@ namespace FinanzasPersonales.Api.Controllers
                 // Guardar archivo
                 var filePath = await _fileStorage.SaveFileAsync(file, userId);
 
-                // Crear registro en BD
+                // Crear registro en BD (sanitize filename)
                 var adjunto = new Adjunto
                 {
-                    FileName = file.FileName,
+                    FileName = Path.GetFileName(file.FileName),
                     FilePath = filePath,
                     ContentType = file.ContentType,
                     FileSize = file.Length,
