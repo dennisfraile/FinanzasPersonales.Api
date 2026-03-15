@@ -19,6 +19,24 @@ namespace FinanzasPersonales.Api.Services
 
         private static DateTime UtcNow => DateTime.UtcNow;
 
+        /// <summary>
+        /// Obtiene los montos de recurrentes pendientes (aún no generados) para un mes específico.
+        /// </summary>
+        private async Task<(decimal ingresos, decimal gastos)> GetRecurrentesPendientesMesAsync(string userId, DateTime inicioMes, DateTime finMes)
+        {
+            var ingresosPendientes = await _context.IngresosRecurrentes
+                .Where(ir => ir.UserId == userId && ir.Activo
+                    && ir.ProximaFecha >= inicioMes && ir.ProximaFecha <= finMes)
+                .SumAsync(ir => (decimal?)ir.Monto) ?? 0;
+
+            var gastosPendientes = await _context.GastosRecurrentes
+                .Where(gr => gr.UserId == userId && gr.Activo
+                    && gr.ProximaFecha >= inicioMes && gr.ProximaFecha <= finMes)
+                .SumAsync(gr => (decimal?)gr.Monto) ?? 0;
+
+            return (ingresosPendientes, gastosPendientes);
+        }
+
         public async Task<List<GastoPorCategoriaDto>> GetGastosPorCategoriaAsync(string userId, int? mes = null, int? ano = null)
         {
             var mesActual = mes ?? UtcNow.Month;
@@ -74,12 +92,24 @@ namespace FinanzasPersonales.Api.Services
                 .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
                 .ToListAsync();
 
+            // Recurrentes pendientes del mes actual
+            var mesActualInicio = UtcDate(fechaActual.Year, fechaActual.Month, 1);
+            var mesActualFin = mesActualInicio.AddMonths(1).AddDays(-1);
+            var (recIngresos, recGastos) = await GetRecurrentesPendientesMesAsync(userId, mesActualInicio, mesActualFin);
+
             var resultado = new List<EvolucionMensualDto>();
             for (int i = meses - 1; i >= 0; i--)
             {
                 var mesRef = fechaActual.AddMonths(-i);
                 var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
                 var gastos = gastosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
+
+                // Agregar recurrentes pendientes solo para el mes actual
+                if (mesRef.Year == fechaActual.Year && mesRef.Month == fechaActual.Month)
+                {
+                    ingresos += recIngresos;
+                    gastos += recGastos;
+                }
 
                 resultado.Add(new EvolucionMensualDto
                 {
@@ -174,6 +204,18 @@ namespace FinanzasPersonales.Api.Services
 
             var totalIngresos = ingresos.Sum(x => x.Monto);
             var totalGastos = gastos.Sum(x => x.Monto);
+
+            // Incluir recurrentes pendientes del mes actual
+            var hoy = UtcNow;
+            var inicioMesActual = UtcDate(hoy.Year, hoy.Month, 1);
+            var finMesActual = inicioMesActual.AddMonths(1).AddDays(-1);
+            if (fechaHasta >= inicioMesActual)
+            {
+                var (recIng, recGas) = await GetRecurrentesPendientesMesAsync(userId, inicioMesActual, finMesActual);
+                totalIngresos += recIng;
+                totalGastos += recGas;
+            }
+
             var diasConActividad = ingresos.Select(x => x.Fecha.Date)
                 .Union(gastos.Select(x => x.Fecha.Date))
                 .Distinct()
@@ -226,12 +268,24 @@ namespace FinanzasPersonales.Api.Services
                 .Select(g => new { g.Key.Year, g.Key.Month, Total = g.Sum(x => x.Monto) })
                 .ToListAsync();
 
+            // Recurrentes pendientes del mes actual
+            var mesActualInicio = UtcDate(fechaActual.Year, fechaActual.Month, 1);
+            var mesActualFin = mesActualInicio.AddMonths(1).AddDays(-1);
+            var (recIngresosActual, recGastosActual) = await GetRecurrentesPendientesMesAsync(userId, mesActualInicio, mesActualFin);
+
             var datos = new List<DatoMensualDto>();
             for (int i = 0; i < meses; i++)
             {
                 var mesRef = inicioMes.AddMonths(i);
                 var ingresos = ingresosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
                 var gastos = gastosPorMes.FirstOrDefault(x => x.Year == mesRef.Year && x.Month == mesRef.Month)?.Total ?? 0;
+
+                // Agregar recurrentes pendientes solo para el mes actual
+                if (mesRef.Year == fechaActual.Year && mesRef.Month == fechaActual.Month)
+                {
+                    ingresos += recIngresosActual;
+                    gastos += recGastosActual;
+                }
 
                 datos.Add(new DatoMensualDto
                 {
@@ -277,6 +331,11 @@ namespace FinanzasPersonales.Api.Services
             var gastosActualVal = await _context.Gastos
                 .Where(x => x.UserId == userId && x.Fecha >= inicioActual && x.Fecha <= finActual)
                 .SumAsync(x => x.Monto);
+
+            // Incluir recurrentes pendientes del mes actual
+            var (recIngresosActual, recGastosActual) = await GetRecurrentesPendientesMesAsync(userId, inicioActual, finActual);
+            ingresosActualVal += recIngresosActual;
+            gastosActualVal += recGastosActual;
 
             // Datos mes anterior
             var ingresosAnteriorVal = await _context.Ingresos
