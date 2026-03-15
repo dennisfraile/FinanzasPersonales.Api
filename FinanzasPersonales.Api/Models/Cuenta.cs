@@ -44,7 +44,7 @@ namespace FinanzasPersonales.Api.Models
         public decimal BalanceInicial { get; set; }
 
         [StringLength(10)]
-        public string Moneda { get; set; } = "MXN";
+        public string Moneda { get; set; } = "USD";
 
         [StringLength(20)]
         public string? Color { get; set; }
