@@ -12,5 +12,6 @@ namespace FinanzasPersonales.Api.Services
         Task<bool> DeletePresupuestoAsync(string userId, int id);
         Task<List<PresupuestoDto>> GetAlertasAsync(string userId);
         Task<decimal> CalcularGastadoActual(string userId, Presupuesto presupuesto);
+        Task<PresupuestoDashboardDto> GetDashboardAsync(string userId, string periodo);
     }
 }

@@ -24,7 +24,7 @@ namespace FinanzasPersonales.Api.Models
 
         [Required]
         [StringLength(50)]
-        public required string Periodo { get; set; } // "Mensual" o "Quincenal"
+        public required string Periodo { get; set; } // "Semanal", "Quincenal", "Mensual", "Trimestral", "Semestral", "Anual"
 
         [Required]
         [Range(1, 12)]
@@ -32,6 +32,8 @@ namespace FinanzasPersonales.Api.Models
 
         [Required]
         public int AnoAplicable { get; set; } // Ej: 2025
+
+        public int? SemanaAplicable { get; set; } // 1-53, solo para periodo Semanal
 
         [Required]
         public required string UserId { get; set; }

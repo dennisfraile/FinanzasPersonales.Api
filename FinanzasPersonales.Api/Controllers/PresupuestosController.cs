@@ -124,5 +124,24 @@ namespace FinanzasPersonales.Api.Controllers
 
             return Ok(resultado);
         }
+
+        /// <summary>
+        /// Dashboard comparativo de presupuestos vs gastos reales por periodo.
+        /// </summary>
+        [HttpGet("dashboard")]
+        [ProducesResponseType(typeof(PresupuestoDashboardDto), StatusCodes.Status200OK)]
+        public async Task<ActionResult<PresupuestoDashboardDto>> GetDashboard(
+            [FromQuery] string periodo = "Semanal")
+        {
+            var periodos = new[] { "Semanal", "Quincenal", "Mensual", "Trimestral", "Semestral", "Anual" };
+            if (!periodos.Contains(periodo))
+                return BadRequest("Período inválido.");
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var resultado = await _presupuestosService.GetDashboardAsync(userId!, periodo);
+
+            return Ok(resultado);
+        }
     }
 }
