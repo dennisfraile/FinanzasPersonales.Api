@@ -15,7 +15,7 @@ namespace FinanzasPersonales.Api.Dtos
         public decimal MontoLimite { get; set; }
 
         [Required]
-        [RegularExpression("^(Mensual|Quincenal)$", ErrorMessage = "El período debe ser 'Mensual' o 'Quincenal'.")]
+        [RegularExpression("^(Semanal|Quincenal|Mensual|Trimestral|Semestral|Anual)$", ErrorMessage = "El período debe ser 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Semestral' o 'Anual'.")]
         public required string Periodo { get; set; }
 
         [Required]
@@ -25,5 +25,8 @@ namespace FinanzasPersonales.Api.Dtos
         [Required]
         [Range(2020, 2100, ErrorMessage = "Año inválido.")]
         public int AnoAplicable { get; set; }
+
+        [Range(1, 53, ErrorMessage = "La semana debe estar entre 1 y 53.")]
+        public int? SemanaAplicable { get; set; }
     }
 }
