@@ -12,7 +12,7 @@ namespace FinanzasPersonales.Api.Dtos
         public string Tipo { get; set; } = string.Empty;
         public decimal BalanceActual { get; set; }
         public decimal BalanceInicial { get; set; }
-        public string Moneda { get; set; } = "MXN";
+        public string Moneda { get; set; } = "USD";
         public string? Color { get; set; }
         public string? Icono { get; set; }
         public bool Activa { get; set; }
@@ -37,7 +37,7 @@ namespace FinanzasPersonales.Api.Dtos
         public decimal BalanceInicial { get; set; }
 
         [StringLength(10)]
-        public string Moneda { get; set; } = "MXN";
+        public string Moneda { get; set; } = "USD";
 
         [StringLength(20)]
         public string? Color { get; set; }
