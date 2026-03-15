@@ -213,6 +213,94 @@ namespace FinanzasPersonales.Api.Jobs
         }
 
         /// <summary>
+        /// Verifica surplus quincenal y notifica al usuario para que lo asigne
+        /// </summary>
+        public async Task VerificarSurplusQuincenalAsync()
+        {
+            var hoy = DateTime.UtcNow;
+
+            // Solo ejecutar el día 16 (fin Q1) y el día 1 (fin Q2 del mes anterior)
+            if (hoy.Day != 1 && hoy.Day != 16)
+                return;
+
+            _logger.LogInformation("Verificando surplus quincenal...");
+
+            // Determinar la quincena que acaba de terminar
+            DateTime inicioQuincena, finQuincena;
+            string periodo;
+
+            if (hoy.Day == 16)
+            {
+                // Acaba de terminar Q1 (días 1-15 del mes actual)
+                inicioQuincena = new DateTime(hoy.Year, hoy.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                finQuincena = new DateTime(hoy.Year, hoy.Month, 15, 23, 59, 59, DateTimeKind.Utc);
+                periodo = $"Q1-{hoy.Year}-{hoy.Month:D2}";
+            }
+            else
+            {
+                // Día 1: acaba de terminar Q2 del mes anterior
+                var mesAnterior = hoy.AddMonths(-1);
+                inicioQuincena = new DateTime(mesAnterior.Year, mesAnterior.Month, 16, 0, 0, 0, DateTimeKind.Utc);
+                finQuincena = new DateTime(mesAnterior.Year, mesAnterior.Month,
+                    DateTime.DaysInMonth(mesAnterior.Year, mesAnterior.Month), 23, 59, 59, DateTimeKind.Utc);
+                periodo = $"Q2-{mesAnterior.Year}-{mesAnterior.Month:D2}";
+            }
+
+            // Obtener cuentas activas con ingresos recurrentes
+            var cuentasConRecurrentes = await _context.IngresosRecurrentes
+                .Where(ir => ir.Activo && ir.CuentaId.HasValue)
+                .Select(ir => new { ir.UserId, CuentaId = ir.CuentaId!.Value })
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var item in cuentasConRecurrentes)
+            {
+                // Verificar si ya se envió notificación para este periodo y cuenta
+                var yaNotificado = await _context.Notificaciones
+                    .AnyAsync(n => n.UserId == item.UserId
+                        && n.Tipo == "SurplusQuincenal"
+                        && n.ReferenciaId == item.CuentaId
+                        && n.DatosAdicionales != null && n.DatosAdicionales.Contains(periodo));
+
+                if (yaNotificado)
+                    continue;
+
+                // Calcular surplus
+                var ingresos = await _context.Ingresos
+                    .Where(i => i.UserId == item.UserId && i.CuentaId == item.CuentaId
+                        && i.Fecha >= inicioQuincena && i.Fecha <= finQuincena)
+                    .SumAsync(i => (decimal?)i.Monto) ?? 0;
+
+                var gastos = await _context.Gastos
+                    .Where(g => g.UserId == item.UserId && g.CuentaId == item.CuentaId
+                        && g.Fecha >= inicioQuincena && g.Fecha <= finQuincena)
+                    .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+                var surplus = ingresos - gastos;
+
+                if (surplus > 0)
+                {
+                    var cuenta = await _context.Cuentas.FindAsync(item.CuentaId);
+                    var nombreCuenta = cuenta?.Nombre ?? "tu cuenta";
+
+                    await _notificacionService.CrearNotificacionAsync(
+                        item.UserId,
+                        "SurplusQuincenal",
+                        $"Sobrante disponible en {nombreCuenta}",
+                        $"Tu quincena terminó con un sobrante de ${surplus:F2}. Decide si quieres ahorrarlo o asignarlo a una meta.",
+                        item.CuentaId,
+                        $"{{\"periodo\":\"{periodo}\",\"cuentaId\":{item.CuentaId},\"surplus\":{surplus}}}"
+                    );
+
+                    _logger.LogInformation("Notificación de surplus enviada: usuario {UserId}, cuenta {CuentaId}, surplus {Surplus}",
+                        item.UserId, item.CuentaId, surplus);
+                }
+            }
+
+            _logger.LogInformation("Verificación de surplus quincenal completada.");
+        }
+
+        /// <summary>
         /// Método principal que ejecuta todas las verificaciones
         /// </summary>
         public async Task EjecutarVerificacionesAsync()
@@ -224,6 +312,7 @@ namespace FinanzasPersonales.Api.Jobs
             await VerificarGastosInusualesAsync();
             await VerificarPagosRecurrentesAsync();
             await VerificarBalanceBajoAsync();
+            await VerificarSurplusQuincenalAsync();
 
             _logger.LogInformation("=== Job de notificaciones completado ===");
         }
