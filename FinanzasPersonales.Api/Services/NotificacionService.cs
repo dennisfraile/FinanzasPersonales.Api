@@ -53,6 +53,39 @@ namespace FinanzasPersonales.Api.Services
             return notificacion.Id;
         }
 
+        public async Task<int> CrearNotificacionAsync(string userId, string tipo, string titulo, string mensaje, int? referenciaId, string? datosAdicionales)
+        {
+            var notificacion = new Notificacion
+            {
+                UserId = userId,
+                Tipo = tipo,
+                Titulo = titulo,
+                Mensaje = mensaje,
+                FechaCreacion = DateTime.Now,
+                Leida = false,
+                EmailEnviado = false,
+                ReferenciaId = referenciaId,
+                DatosAdicionales = datosAdicionales
+            };
+
+            _context.Notificaciones.Add(notificacion);
+            await _context.SaveChangesAsync();
+
+            var notificacionDto = new NotificacionDto
+            {
+                Id = notificacion.Id,
+                Tipo = notificacion.Tipo,
+                Titulo = notificacion.Titulo,
+                Mensaje = notificacion.Mensaje,
+                FechaCreacion = notificacion.FechaCreacion,
+                Leida = notificacion.Leida,
+                EmailEnviado = notificacion.EmailEnviado
+            };
+            await _hubContext.Clients.Group($"user_{userId}").SendAsync("NuevaNotificacion", notificacionDto);
+
+            return notificacion.Id;
+        }
+
         public async Task MarcarComoLeidaAsync(int notificacionId, string userId)
         {
             var notificacion = await _context.Notificaciones
