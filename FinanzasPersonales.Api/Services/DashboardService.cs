@@ -266,7 +266,7 @@ namespace FinanzasPersonales.Api.Services
             var primerDiaMesAnterior = primerDiaMesActual.AddMonths(-1);
             var primerDia6MesesAtras = primerDiaMesActual.AddMonths(-5);
 
-            // Totales mes actual
+            // Totales mes actual (transacciones reales)
             var ingresosActual = await _context.Ingresos
                 .Where(i => i.UserId == userId && i.Fecha >= primerDiaMesActual && i.Fecha <= ultimoDiaMesActual)
                 .SumAsync(i => (decimal?)i.Monto) ?? 0;
@@ -274,6 +274,25 @@ namespace FinanzasPersonales.Api.Services
             var gastosActual = await _context.Gastos
                 .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual)
                 .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+            // Incluir recurrentes pendientes del mes actual (aún no generados por el job)
+            var ingresosRecurrentesPendientes = await _context.IngresosRecurrentes
+                .Where(ir => ir.UserId == userId && ir.Activo
+                    && ir.ProximaFecha >= primerDiaMesActual && ir.ProximaFecha <= ultimoDiaMesActual)
+                .SumAsync(ir => (decimal?)ir.Monto) ?? 0;
+
+            var gastosRecurrentesPendientes = await _context.GastosRecurrentes
+                .Where(gr => gr.UserId == userId && gr.Activo
+                    && gr.ProximaFecha >= primerDiaMesActual && gr.ProximaFecha <= ultimoDiaMesActual)
+                .SumAsync(gr => (decimal?)gr.Monto) ?? 0;
+
+            ingresosActual += ingresosRecurrentesPendientes;
+            gastosActual += gastosRecurrentesPendientes;
+
+            // Balance total de cuentas
+            var balanceCuentas = await _context.Cuentas
+                .Where(c => c.UserId == userId && c.Activa)
+                .SumAsync(c => (decimal?)c.BalanceActual) ?? 0;
 
             // Totales mes anterior
             var gastosAnterior = await _context.Gastos
@@ -330,6 +349,7 @@ namespace FinanzasPersonales.Api.Services
                 TotalIngresosDelMes = ingresosActual,
                 TotalGastosDelMes = gastosActual,
                 BalanceDelMes = ingresosActual - gastosActual,
+                BalanceCuentas = balanceCuentas,
                 CambioMesAnterior = cambio,
                 Tendencia6Meses = tendencia,
                 Top5Categorias = top5

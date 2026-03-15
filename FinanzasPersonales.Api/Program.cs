@@ -156,6 +156,7 @@ builder.Services.AddRateLimiter(options =>
 // Registrar jobs
 builder.Services.AddScoped<NotificacionesJob>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Jobs.RecurrentesJob>();
 
 // Configurar Hangfire con PostgreSQL
 builder.Services.AddHangfire(configuration => configuration
@@ -309,6 +310,13 @@ RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>(
     "enviar-reportes-programados",
     job => job.EjecutarEnvioReportesAsync(),
     Cron.Daily(7) // 7:00 AM todos los días
+);
+
+// Programar job de transacciones recurrentes (se ejecuta cada hora)
+RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.RecurrentesJob>(
+    "generar-transacciones-recurrentes",
+    job => job.GenerarTransaccionesRecurrentesAsync(),
+    Cron.Hourly() // Cada hora para no perder pagos del día
 );
 
 app.Run();

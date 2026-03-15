@@ -17,6 +17,7 @@ namespace FinanzasPersonales.Api.Dtos
         public decimal TotalIngresosDelMes { get; set; }
         public decimal TotalGastosDelMes { get; set; }
         public decimal BalanceDelMes { get; set; }
+        public decimal BalanceCuentas { get; set; }
         public decimal CambioMesAnterior { get; set; }
 
         public List<MesFinancieroDto> Tendencia6Meses { get; set; } = new();
