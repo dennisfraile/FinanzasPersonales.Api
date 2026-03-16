@@ -22,7 +22,7 @@ namespace FinanzasPersonales.Api.Services
 
         Task<Gasto?> GetGastoAsync(string userId, int id);
 
-        Task<Gasto> CreateGastoAsync(string userId, CreateGastoDto dto);
+        Task<GastoDto> CreateGastoAsync(string userId, CreateGastoDto dto);
 
         Task<bool> UpdateGastoAsync(string userId, int id, UpdateGastoDto dto);
 

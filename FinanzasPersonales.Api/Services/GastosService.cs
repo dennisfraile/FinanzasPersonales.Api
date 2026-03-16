@@ -113,12 +113,12 @@ namespace FinanzasPersonales.Api.Services
                 .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
         }
 
-        public async Task<Gasto> CreateGastoAsync(string userId, CreateGastoDto dto)
+        public async Task<GastoDto> CreateGastoAsync(string userId, CreateGastoDto dto)
         {
             // Validar que la categoría pertenece al usuario
-            var categoriaExiste = await _context.Categorias
-                .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
-            if (!categoriaExiste)
+            var categoria = await _context.Categorias
+                .FirstOrDefaultAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
+            if (categoria == null)
                 throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
 
             var gasto = new Gasto
@@ -145,6 +145,7 @@ namespace FinanzasPersonales.Api.Services
             }
             await _context.SaveChangesAsync();
 
+            List<int> tagIdsAsociados = new();
             if (dto.TagIds != null && dto.TagIds.Any())
             {
                 var tagsValidos = await _context.Tags
@@ -163,9 +164,22 @@ namespace FinanzasPersonales.Api.Services
 
                 _context.GastoTags.AddRange(gastoTags);
                 await _context.SaveChangesAsync();
+                tagIdsAsociados = tagsValidos;
             }
 
-            return gasto;
+            return new GastoDto
+            {
+                Id = gasto.Id,
+                Fecha = gasto.Fecha,
+                CategoriaId = gasto.CategoriaId,
+                CategoriaNombre = categoria.Nombre,
+                Tipo = gasto.Tipo ?? "Variable",
+                Descripcion = gasto.Descripcion,
+                Monto = gasto.Monto,
+                CuentaId = gasto.CuentaId,
+                Notas = gasto.Notas,
+                TagIds = tagIdsAsociados
+            };
         }
 
         public async Task<bool> UpdateGastoAsync(string userId, int id, UpdateGastoDto dto)
