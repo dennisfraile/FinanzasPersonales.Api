@@ -16,7 +16,7 @@ namespace FinanzasPersonales.Tests.Controllers
 
         private GastosController CreateControllerWithUser(IGastosService gastosService)
         {
-            var controller = new GastosController(gastosService);
+            var controller = new GastosController(gastosService, new Mock<IDetallesGastoService>().Object);
 
             var claims = new List<Claim>
             {
@@ -222,7 +222,7 @@ namespace FinanzasPersonales.Tests.Controllers
         {
             // Arrange
             var mockService = new Mock<IGastosService>();
-            var controller = new GastosController(mockService.Object);
+            var controller = new GastosController(mockService.Object, new Mock<IDetallesGastoService>().Object);
 
             // Set up empty claims (no NameIdentifier)
             var identity = new ClaimsIdentity();

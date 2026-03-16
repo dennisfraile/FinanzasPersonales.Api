@@ -37,6 +37,7 @@ namespace FinanzasPersonales.Api.Services
                 .Include(g => g.Categoria)
                 .Include(g => g.GastoTags)
                     .ThenInclude(gt => gt.Tag)
+                .Include(g => g.Detalles)
                 .AsQueryable();
 
             if (categoriaId.HasValue)
@@ -91,7 +92,9 @@ namespace FinanzasPersonales.Api.Services
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
                     Notas = g.Notas,
-                    TagIds = g.GastoTags.Select(gt => gt.TagId).ToList()
+                    TagIds = g.GastoTags.Select(gt => gt.TagId).ToList(),
+                    CantidadDetalles = g.Detalles.Count,
+                    MontoDisponible = g.Detalles.Any() ? g.Monto - g.Detalles.Sum(d => d.Monto) : (decimal?)null
                 })
                 .ToListAsync();
 
@@ -189,6 +192,17 @@ namespace FinanzasPersonales.Api.Services
 
             if (gastoExistente == null)
                 return false;
+
+            // Validar que no se reduzca el monto por debajo de lo ya consumido en detalles
+            if (dto.Monto < gastoExistente.Monto)
+            {
+                var sumaDetalles = await _context.DetallesGasto
+                    .Where(d => d.GastoId == id)
+                    .SumAsync(d => (decimal?)d.Monto) ?? 0;
+
+                if (dto.Monto < sumaDetalles)
+                    throw new InvalidOperationException($"No puede reducir el monto por debajo de lo ya consumido en compras ({sumaDetalles:F2}).");
+            }
 
             gastoExistente.Fecha = DateTime.SpecifyKind(dto.Fecha, DateTimeKind.Utc);
             gastoExistente.CategoriaId = dto.CategoriaId;

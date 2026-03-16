@@ -92,6 +92,7 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IMetasService, Finanz
 
 // Registrar servicios de negocio (service layer)
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosService, FinanzasPersonales.Api.Services.GastosService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IDetallesGastoService, FinanzasPersonales.Api.Services.DetallesGastoService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IIngresosService, FinanzasPersonales.Api.Services.IngresosService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IPresupuestosService, FinanzasPersonales.Api.Services.PresupuestosService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IDashboardService, FinanzasPersonales.Api.Services.DashboardService>();
