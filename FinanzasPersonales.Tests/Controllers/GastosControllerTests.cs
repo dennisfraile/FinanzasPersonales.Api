@@ -168,15 +168,14 @@ namespace FinanzasPersonales.Tests.Controllers
                 Monto = 150m
             };
 
-            var createdGasto = new Gasto
+            var createdGasto = new GastoDto
             {
                 Id = 1,
                 Fecha = dto.Fecha,
                 CategoriaId = dto.CategoriaId,
                 Tipo = dto.Tipo,
                 Descripcion = dto.Descripcion,
-                Monto = dto.Monto,
-                UserId = TestUserId
+                Monto = dto.Monto
             };
 
             mockService.Setup(s => s.CreateGastoAsync(TestUserId, dto))
@@ -207,7 +206,7 @@ namespace FinanzasPersonales.Tests.Controllers
             };
 
             mockService.Setup(s => s.CreateGastoAsync(It.IsAny<string>(), It.IsAny<CreateGastoDto>()))
-                .ReturnsAsync(new Gasto { Id = 1, UserId = TestUserId, Fecha = dto.Fecha, CategoriaId = 1, Monto = 5000m });
+                .ReturnsAsync(new GastoDto { Id = 1, Fecha = dto.Fecha, CategoriaId = 1, Monto = 5000m });
 
             var controller = CreateControllerWithUser(mockService.Object);
 
