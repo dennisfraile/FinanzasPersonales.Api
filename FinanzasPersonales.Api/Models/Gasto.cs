@@ -57,5 +57,8 @@ namespace FinanzasPersonales.Api.Models
 
         // Relación many-to-many con Tags
         public ICollection<GastoTag> GastoTags { get; set; } = new List<GastoTag>();
+
+        // Detalles de compras individuales dentro de este gasto
+        public virtual ICollection<DetalleGasto> Detalles { get; set; } = new List<DetalleGasto>();
     }
 }

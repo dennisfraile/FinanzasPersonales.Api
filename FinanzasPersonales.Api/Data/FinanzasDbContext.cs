@@ -122,6 +122,13 @@ namespace FinanzasPersonales.Api.Data
                 .WithMany(t => t.IngresoTags)
                 .HasForeignKey(it => it.TagId);
 
+            // Configuración DetalleGasto -> Gasto (cascade delete)
+            modelBuilder.Entity<DetalleGasto>()
+                .HasOne(d => d.Gasto)
+                .WithMany(g => g.Detalles)
+                .HasForeignKey(d => d.GastoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {
@@ -151,6 +158,9 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<ParticipanteGasto> ParticipantesGasto { get; set; }
         public DbSet<TipoCambio> TiposCambio { get; set; }
         public DbSet<ReporteProgramado> ReportesProgramados { get; set; }
+
+        // Detalles de gastos (sub-compras)
+        public DbSet<DetalleGasto> DetallesGasto { get; set; }
 
         // Tags y relaciones many-to-many
         public DbSet<Tag> Tags { get; set; }
