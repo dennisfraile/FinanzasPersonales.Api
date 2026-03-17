@@ -81,6 +81,7 @@ namespace FinanzasPersonales.Api.Services
                     CategoriaNombre = i.Categoria != null ? i.Categoria.Nombre : "",
                     Descripcion = i.Descripcion,
                     Monto = i.Monto,
+                    CuentaId = i.CuentaId,
                     Notas = i.Notas,
                     TagIds = i.IngresoTags.Select(it => it.TagId).ToList()
                 })
