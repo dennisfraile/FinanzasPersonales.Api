@@ -105,12 +105,12 @@ namespace FinanzasPersonales.Api.Services
                 .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
         }
 
-        public async Task<Ingreso> CreateIngresoAsync(string userId, CreateIngresoDto dto)
+        public async Task<IngresoDto> CreateIngresoAsync(string userId, CreateIngresoDto dto)
         {
             // Validar que la categoría pertenece al usuario
-            var categoriaExiste = await _context.Categorias
-                .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
-            if (!categoriaExiste)
+            var categoria = await _context.Categorias
+                .FirstOrDefaultAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
+            if (categoria == null)
                 throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
 
             var ingreso = new Ingreso
@@ -136,6 +136,7 @@ namespace FinanzasPersonales.Api.Services
             }
             await _context.SaveChangesAsync();
 
+            List<int> tagIdsAsociados = new();
             if (dto.TagIds != null && dto.TagIds.Any())
             {
                 var tagsValidos = await _context.Tags
@@ -154,9 +155,21 @@ namespace FinanzasPersonales.Api.Services
 
                 _context.IngresoTags.AddRange(ingresoTags);
                 await _context.SaveChangesAsync();
+                tagIdsAsociados = tagsValidos;
             }
 
-            return ingreso;
+            return new IngresoDto
+            {
+                Id = ingreso.Id,
+                Fecha = ingreso.Fecha,
+                CategoriaId = ingreso.CategoriaId,
+                CategoriaNombre = categoria.Nombre,
+                Descripcion = ingreso.Descripcion,
+                Monto = ingreso.Monto,
+                CuentaId = ingreso.CuentaId,
+                Notas = ingreso.Notas,
+                TagIds = tagIdsAsociados
+            };
         }
 
         public async Task<bool> UpdateIngresoAsync(string userId, int id, UpdateIngresoDto dto)

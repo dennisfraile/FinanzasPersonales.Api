@@ -20,7 +20,7 @@ namespace FinanzasPersonales.Api.Services
 
         Task<Ingreso?> GetIngresoAsync(string userId, int id);
 
-        Task<Ingreso> CreateIngresoAsync(string userId, CreateIngresoDto dto);
+        Task<IngresoDto> CreateIngresoAsync(string userId, CreateIngresoDto dto);
 
         Task<bool> UpdateIngresoAsync(string userId, int id, UpdateIngresoDto dto);
 
