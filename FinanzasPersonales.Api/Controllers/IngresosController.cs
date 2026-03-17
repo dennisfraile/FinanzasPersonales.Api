@@ -78,7 +78,7 @@ namespace FinanzasPersonales.Api.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<Ingreso>> PostIngreso(CreateIngresoDto dto)
+        public async Task<ActionResult<IngresoDto>> PostIngreso(CreateIngresoDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
