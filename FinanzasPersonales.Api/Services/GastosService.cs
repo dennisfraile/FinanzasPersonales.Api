@@ -91,6 +91,7 @@ namespace FinanzasPersonales.Api.Services
                     Tipo = g.Tipo ?? "Variable",
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
+                    CuentaId = g.CuentaId,
                     Notas = g.Notas,
                     TagIds = g.GastoTags.Select(gt => gt.TagId).ToList(),
                     CantidadDetalles = g.Detalles.Count,
