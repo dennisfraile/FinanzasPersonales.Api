@@ -336,5 +336,36 @@ namespace FinanzasPersonales.Api.Services
 
             return true;
         }
+
+        public async Task<(bool success, string? error)> TransferirSaldoAsync(string userId, TransferirSaldoGastoDto dto)
+        {
+            if (dto.GastoOrigenId == dto.GastoDestinoId)
+                return (false, "El gasto origen y destino deben ser diferentes.");
+
+            var gastoOrigen = await _context.Gastos
+                .Include(g => g.Detalles)
+                .FirstOrDefaultAsync(g => g.Id == dto.GastoOrigenId && g.UserId == userId);
+
+            if (gastoOrigen == null)
+                return (false, "Recurso no encontrado o acceso denegado.");
+
+            var gastoDestino = await _context.Gastos
+                .FirstOrDefaultAsync(g => g.Id == dto.GastoDestinoId && g.UserId == userId);
+
+            if (gastoDestino == null)
+                return (false, "Recurso no encontrado o acceso denegado.");
+
+            var sumaDetallesOrigen = gastoOrigen.Detalles.Sum(d => d.Monto);
+            var disponibleOrigen = gastoOrigen.Monto - sumaDetallesOrigen;
+
+            if (dto.Monto > disponibleOrigen)
+                return (false, $"El monto excede el disponible del gasto origen. Disponible: {disponibleOrigen:F2}");
+
+            gastoOrigen.Monto -= dto.Monto;
+            gastoDestino.Monto += dto.Monto;
+
+            await _context.SaveChangesAsync();
+            return (true, null);
+        }
     }
 }

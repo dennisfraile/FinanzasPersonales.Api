@@ -134,6 +134,26 @@ namespace FinanzasPersonales.Api.Controllers
             return NoContent();
         }
 
+        // ==================== TRANSFERIR SALDO ENTRE GASTOS ====================
+
+        /// <summary>
+        /// Transfiere saldo disponible de un gasto a otro.
+        /// </summary>
+        [HttpPost("transferir-saldo")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> TransferirSaldo(TransferirSaldoGastoDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var (success, error) = await _gastosService.TransferirSaldoAsync(userId!, dto);
+
+            if (!success)
+                return BadRequest(error);
+
+            return Ok(new { message = "Saldo transferido exitosamente." });
+        }
+
         // ==================== DETALLES DE GASTO (SUB-COMPRAS) ====================
 
         /// <summary>
