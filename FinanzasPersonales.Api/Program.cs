@@ -315,26 +315,31 @@ app.MapControllers();
 // Mapear hub de SignalR para notificaciones en tiempo real
 app.MapHub<NotificacionesHub>("/hubs/notificaciones");
 
-// Programar job recurrente de notificaciones (se ejecuta diariamente a las 9:00 AM)
-RecurringJob.AddOrUpdate<NotificacionesJob>(
-    "verificar-alertas-diarias",
-    job => job.EjecutarVerificacionesAsync(),
-    Cron.Daily(9) // 9:00 AM todos los días
-);
+// Programar jobs recurrentes de Hangfire (tolerante a fallos de conexión inicial)
+try
+{
+    RecurringJob.AddOrUpdate<NotificacionesJob>(
+        "verificar-alertas-diarias",
+        job => job.EjecutarVerificacionesAsync(),
+        Cron.Daily(9) // 9:00 AM todos los días
+    );
 
-// Programar job de reportes programados (se ejecuta diariamente a las 7:00 AM)
-RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>(
-    "enviar-reportes-programados",
-    job => job.EjecutarEnvioReportesAsync(),
-    Cron.Daily(7) // 7:00 AM todos los días
-);
+    RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.ReportesProgramadosJob>(
+        "enviar-reportes-programados",
+        job => job.EjecutarEnvioReportesAsync(),
+        Cron.Daily(7) // 7:00 AM todos los días
+    );
 
-// Programar job de transacciones recurrentes (se ejecuta cada hora)
-RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.RecurrentesJob>(
-    "generar-transacciones-recurrentes",
-    job => job.GenerarTransaccionesRecurrentesAsync(),
-    Cron.Hourly() // Cada hora para no perder pagos del día
-);
+    RecurringJob.AddOrUpdate<FinanzasPersonales.Api.Jobs.RecurrentesJob>(
+        "generar-transacciones-recurrentes",
+        job => job.GenerarTransaccionesRecurrentesAsync(),
+        Cron.Hourly() // Cada hora para no perder pagos del día
+    );
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Hangfire jobs could not be registered at startup. They will be registered when storage becomes available.");
+}
 
 app.Run();
 
