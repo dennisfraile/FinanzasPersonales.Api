@@ -113,10 +113,33 @@ namespace FinanzasPersonales.Api.Services
             };
         }
 
-        public async Task<Gasto?> GetGastoAsync(string userId, int id)
+        public async Task<GastoDto?> GetGastoAsync(string userId, int id)
         {
-            return await _context.Gastos
+            var gasto = await _context.Gastos
+                .Include(g => g.Categoria)
+                .Include(g => g.Cuenta)
+                .Include(g => g.GastoTags)
+                .Include(g => g.Detalles)
                 .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+
+            if (gasto == null) return null;
+
+            return new GastoDto
+            {
+                Id = gasto.Id,
+                Fecha = gasto.Fecha,
+                CategoriaId = gasto.CategoriaId,
+                CategoriaNombre = gasto.Categoria?.Nombre,
+                Tipo = gasto.Tipo,
+                Descripcion = gasto.Descripcion,
+                Monto = gasto.Monto,
+                CuentaId = gasto.CuentaId,
+                CuentaNombre = gasto.Cuenta?.Nombre,
+                Notas = gasto.Notas,
+                TagIds = gasto.GastoTags.Select(gt => gt.TagId).ToList(),
+                CantidadDetalles = gasto.Detalles.Count,
+                MontoDisponible = gasto.Monto - gasto.Detalles.Sum(d => d.Monto),
+            };
         }
 
         public async Task<GastoDto> CreateGastoAsync(string userId, CreateGastoDto dto)

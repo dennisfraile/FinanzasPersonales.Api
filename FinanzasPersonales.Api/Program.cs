@@ -288,12 +288,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Habilitar dashboard de Hangfire protegido con autenticación
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+// Habilitar dashboard de Hangfire solo en desarrollo
+if (app.Environment.IsDevelopment())
 {
-    Authorization = new[] { new HangfireAuthorizationFilter() },
-    IsReadOnlyFunc = _ => true
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireAuthorizationFilter() },
+        IsReadOnlyFunc = _ => true
+    });
+}
 
 app.MapControllers();
 
