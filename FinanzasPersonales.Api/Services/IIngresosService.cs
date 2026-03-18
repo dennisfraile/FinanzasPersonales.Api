@@ -18,7 +18,7 @@ namespace FinanzasPersonales.Api.Services
             int tamañoPagina = 50,
             List<int>? tagIds = null);
 
-        Task<Ingreso?> GetIngresoAsync(string userId, int id);
+        Task<IngresoDto?> GetIngresoAsync(string userId, int id);
 
         Task<IngresoDto> CreateIngresoAsync(string userId, CreateIngresoDto dto);
 

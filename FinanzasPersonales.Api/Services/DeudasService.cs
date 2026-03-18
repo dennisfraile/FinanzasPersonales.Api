@@ -52,7 +52,7 @@ namespace FinanzasPersonales.Api.Services
             {
                 var cuenta = await _context.Cuentas.FirstOrDefaultAsync(c => c.Id == dto.CuentaId && c.UserId == userId);
                 if (cuenta == null)
-                    throw new InvalidOperationException("La cuenta no existe o no pertenece al usuario.");
+                    throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
             }
 
             var deuda = new Deuda
@@ -110,7 +110,7 @@ namespace FinanzasPersonales.Api.Services
         {
             var deuda = await _context.Deudas.FirstOrDefaultAsync(d => d.Id == deudaId && d.UserId == userId);
             if (deuda == null)
-                throw new InvalidOperationException("La deuda no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             // Calcular distribución interés/capital
             var interesMes = deuda.SaldoActual * (deuda.TasaInteres / 100 / 12);
@@ -161,7 +161,7 @@ namespace FinanzasPersonales.Api.Services
         {
             var deudaExiste = await _context.Deudas.AnyAsync(d => d.Id == deudaId && d.UserId == userId);
             if (!deudaExiste)
-                throw new InvalidOperationException("La deuda no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             return await _context.PagosDeuda
                 .Where(p => p.DeudaId == deudaId && p.UserId == userId)
@@ -188,7 +188,7 @@ namespace FinanzasPersonales.Api.Services
         {
             var deuda = await _context.Deudas.FirstOrDefaultAsync(d => d.Id == deudaId && d.UserId == userId);
             if (deuda == null)
-                throw new InvalidOperationException("La deuda no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var pago = pagoMensual ?? deuda.PagoMinimo ?? 0;
             if (pago <= 0)

@@ -153,6 +153,16 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1)
             }));
+
+    // Límite para uploads: 10 requests por minuto por IP
+    options.AddPolicy("uploads", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1)
+            }));
 });
 
 // Registrar jobs
@@ -269,6 +279,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'";
     context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    context.Response.Headers["X-Permitted-Cross-Domain-Policies"] = "none";
     await next();
 });
 
@@ -288,12 +300,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Habilitar dashboard de Hangfire protegido con autenticación
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+// Habilitar dashboard de Hangfire solo en desarrollo
+if (app.Environment.IsDevelopment())
 {
-    Authorization = new[] { new HangfireAuthorizationFilter() },
-    IsReadOnlyFunc = _ => true
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new[] { new HangfireAuthorizationFilter() },
+        IsReadOnlyFunc = _ => true
+    });
+}
 
 app.MapControllers();
 

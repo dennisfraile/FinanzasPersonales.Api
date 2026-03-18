@@ -65,7 +65,7 @@ namespace FinanzasPersonales.Api.Services
             // Validar que la cuenta pertenece al usuario
             var cuenta = await _context.Cuentas.FirstOrDefaultAsync(c => c.Id == request.CuentaId && c.UserId == userId);
             if (cuenta == null)
-                throw new InvalidOperationException("La cuenta no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var rows = await ReadAllRowsAsync(csvStream);
             var dataRows = request.PrimeraFilaEsEncabezado ? rows.Skip(1).ToList() : rows;

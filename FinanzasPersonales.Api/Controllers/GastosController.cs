@@ -64,7 +64,7 @@ namespace FinanzasPersonales.Api.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<Gasto>> GetGasto(int id)
+        public async Task<ActionResult<GastoDto>> GetGasto(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 

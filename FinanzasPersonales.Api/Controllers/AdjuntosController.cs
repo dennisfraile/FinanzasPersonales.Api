@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using FinanzasPersonales.Api.Data;
 using FinanzasPersonales.Api.Models;
@@ -14,6 +15,7 @@ namespace FinanzasPersonales.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [EnableRateLimiting("uploads")]
     public class AdjuntosController : ControllerBase
     {
         private readonly FinanzasDbContext _context;
@@ -61,6 +63,13 @@ namespace FinanzasPersonales.Api.Controllers
             if (file.ContentType != "application/pdf")
                 return BadRequest("El tipo de archivo no es válido. Solo se permiten archivos PDF.");
 
+            // Validar magic bytes del PDF (%PDF-)
+            using var headerStream = file.OpenReadStream();
+            var header = new byte[5];
+            var bytesRead = await headerStream.ReadAsync(header, 0, 5);
+            if (bytesRead < 5 || header[0] != 0x25 || header[1] != 0x50 || header[2] != 0x44 || header[3] != 0x46 || header[4] != 0x2D)
+                return BadRequest("El archivo no es un PDF válido.");
+
             if (!gastoId.HasValue && !ingresoId.HasValue)
                 return BadRequest("Debe especificar un gastoId o ingresoId");
 
@@ -72,14 +81,14 @@ namespace FinanzasPersonales.Api.Controllers
             {
                 var gasto = await _context.Gastos.FindAsync(gastoId.Value);
                 if (gasto == null || gasto.UserId != userId)
-                    return NotFound("Gasto no encontrado");
+                    return NotFound("Recurso no encontrado");
             }
 
             if (ingresoId.HasValue)
             {
                 var ingreso = await _context.Ingresos.FindAsync(ingresoId.Value);
                 if (ingreso == null || ingreso.UserId != userId)
-                    return NotFound("Ingreso no encontrado");
+                    return NotFound("Recurso no encontrado");
             }
 
             try

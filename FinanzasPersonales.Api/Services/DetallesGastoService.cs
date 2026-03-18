@@ -22,7 +22,7 @@ namespace FinanzasPersonales.Api.Services
             var gastoExiste = await _context.Gastos
                 .AnyAsync(g => g.Id == gastoId && g.UserId == userId);
             if (!gastoExiste)
-                throw new InvalidOperationException("El gasto no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             return await _context.DetallesGasto
                 .Where(d => d.GastoId == gastoId && d.UserId == userId)
@@ -87,7 +87,7 @@ namespace FinanzasPersonales.Api.Services
             var gasto = await _context.Gastos
                 .FirstOrDefaultAsync(g => g.Id == gastoId && g.UserId == userId);
             if (gasto == null)
-                throw new InvalidOperationException("El gasto no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var sumaExistente = await _context.DetallesGasto
                 .Where(d => d.GastoId == gastoId)

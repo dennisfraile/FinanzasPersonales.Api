@@ -114,17 +114,16 @@ namespace FinanzasPersonales.Tests.Controllers
         {
             // Arrange
             var mockService = new Mock<IGastosService>();
-            var gasto = new Gasto
+            var gastoDto = new GastoDto
             {
                 Id = 1,
                 Fecha = DateTime.UtcNow,
                 CategoriaId = 1,
                 Monto = 100m,
-                UserId = TestUserId
             };
 
             mockService.Setup(s => s.GetGastoAsync(TestUserId, 1))
-                .ReturnsAsync(gasto);
+                .ReturnsAsync(gastoDto);
 
             var controller = CreateControllerWithUser(mockService.Object);
 
@@ -141,7 +140,7 @@ namespace FinanzasPersonales.Tests.Controllers
             // Arrange
             var mockService = new Mock<IGastosService>();
             mockService.Setup(s => s.GetGastoAsync(TestUserId, 999))
-                .ReturnsAsync((Gasto?)null);
+                .ReturnsAsync((GastoDto?)null);
 
             var controller = CreateControllerWithUser(mockService.Object);
 

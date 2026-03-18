@@ -20,7 +20,7 @@ namespace FinanzasPersonales.Api.Services
             int tamañoPagina = 50,
             List<int>? tagIds = null);
 
-        Task<Gasto?> GetGastoAsync(string userId, int id);
+        Task<GastoDto?> GetGastoAsync(string userId, int id);
 
         Task<GastoDto> CreateGastoAsync(string userId, CreateGastoDto dto);
 

@@ -60,7 +60,7 @@ namespace FinanzasPersonales.Api.Controllers
         [HttpGet("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<Ingreso>> GetIngreso(int id)
+        public async Task<ActionResult<IngresoDto>> GetIngreso(int id)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 

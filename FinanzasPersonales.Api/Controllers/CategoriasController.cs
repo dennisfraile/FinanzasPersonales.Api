@@ -138,7 +138,7 @@ namespace FinanzasPersonales.Api.Controllers
                 var parent = await _context.Categorias
                     .FirstOrDefaultAsync(c => c.Id == dto.ParentCategoriaId.Value && c.UserId == userId);
                 if (parent == null)
-                    return BadRequest("La categoría padre no existe o no pertenece al usuario.");
+                    return BadRequest("Recurso no encontrado o acceso denegado.");
                 if (parent.Tipo != dto.Tipo)
                     return BadRequest("La subcategoría debe tener el mismo tipo que la categoría padre.");
                 if (parent.ParentCategoriaId.HasValue)
@@ -194,7 +194,7 @@ namespace FinanzasPersonales.Api.Controllers
                 var parent = await _context.Categorias
                     .FirstOrDefaultAsync(c => c.Id == dto.ParentCategoriaId.Value && c.UserId == userId);
                 if (parent == null)
-                    return BadRequest("La categoría padre no existe o no pertenece al usuario.");
+                    return BadRequest("Recurso no encontrado o acceso denegado.");
                 if (parent.Tipo != dto.Tipo)
                     return BadRequest("La subcategoría debe tener el mismo tipo que la categoría padre.");
                 if (parent.ParentCategoriaId.HasValue)

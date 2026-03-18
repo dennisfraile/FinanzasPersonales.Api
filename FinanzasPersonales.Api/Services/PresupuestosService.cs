@@ -182,7 +182,7 @@ namespace FinanzasPersonales.Api.Services
                 .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
 
             if (!categoriaExiste)
-                return (null, "La categoría no existe o no pertenece al usuario.");
+                return (null, "Recurso no encontrado o acceso denegado.");
 
             // Verificar duplicados según periodo
             IQueryable<Presupuesto> duplicadoQuery = _context.Presupuestos

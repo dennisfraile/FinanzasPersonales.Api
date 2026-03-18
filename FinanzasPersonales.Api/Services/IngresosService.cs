@@ -101,10 +101,29 @@ namespace FinanzasPersonales.Api.Services
             };
         }
 
-        public async Task<Ingreso?> GetIngresoAsync(string userId, int id)
+        public async Task<IngresoDto?> GetIngresoAsync(string userId, int id)
         {
-            return await _context.Ingresos
-                .FirstOrDefaultAsync(g => g.Id == id && g.UserId == userId);
+            var ingreso = await _context.Ingresos
+                .Include(i => i.Categoria)
+                .Include(i => i.Cuenta)
+                .Include(i => i.IngresoTags)
+                .FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
+
+            if (ingreso == null) return null;
+
+            return new IngresoDto
+            {
+                Id = ingreso.Id,
+                Fecha = ingreso.Fecha,
+                CategoriaId = ingreso.CategoriaId,
+                CategoriaNombre = ingreso.Categoria?.Nombre,
+                Descripcion = ingreso.Descripcion,
+                Monto = ingreso.Monto,
+                CuentaId = ingreso.CuentaId,
+                CuentaNombre = ingreso.Cuenta?.Nombre,
+                Notas = ingreso.Notas,
+                TagIds = ingreso.IngresoTags.Select(it => it.TagId).ToList(),
+            };
         }
 
         public async Task<IngresoDto> CreateIngresoAsync(string userId, CreateIngresoDto dto)
@@ -113,7 +132,7 @@ namespace FinanzasPersonales.Api.Services
             var categoria = await _context.Categorias
                 .FirstOrDefaultAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
             if (categoria == null)
-                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var ingreso = new Ingreso
             {
