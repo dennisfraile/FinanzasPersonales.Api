@@ -1,114 +1,240 @@
-# Finanzas Personales - Backend API
+# FinanzasPersonales.Api
 
-API REST desarrollada con .NET 8 para el sistema de gestión de finanzas personales. Proporciona endpoints seguros para administrar gastos, ingresos, presupuestos, metas financieras y generar reportes.
+API REST desarrollada con **.NET 8** para gestión integral de finanzas personales. Provee autenticación con Google OAuth + JWT, gestión multi-cuenta, presupuestos multi-periodo, deudas, gastos compartidos, transacciones recurrentes, reportes avanzados, notificaciones en tiempo real y jobs automatizados.
 
-## 🚀 Tecnologías
+## Tecnologias
 
-- **.NET 8** - Framework principal
-- **ASP.NET Core Web API** - API REST
-- **Entity Framework Core 8** - ORM
-- **PostgreSQL** - Base de datos
-- **ASP.NET Core Identity** - Autenticación y gestión de usuarios
-- **JWT (JSON Web Tokens)** - Autenticación basada en tokens
-- **EPPlus** - Exportación a Excel
-- **Swagger/OpenAPI** - Documentación de API
+| Tecnologia | Uso |
+|---|---|
+| .NET 8 | Framework principal |
+| Entity Framework Core 9 | ORM con PostgreSQL |
+| ASP.NET Core Identity | Autenticacion y usuarios |
+| JWT Bearer | Tokens de autenticacion (2h expiracion) |
+| Google OAuth | Login con Google |
+| Hangfire | Jobs recurrentes en background |
+| SignalR | Notificaciones en tiempo real |
+| PostgreSQL | Base de datos relacional |
+| QuestPDF | Generacion de reportes PDF |
+| EPPlus | Exportacion a Excel |
+| iTextSharp | Procesamiento de PDFs |
+| MailKit | Envio de emails |
+| CsvHelper | Importacion de CSV |
+| Swagger/OpenAPI | Documentacion interactiva |
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 FinanzasPersonales.Api/
-├── Controllers/          # Endpoints de la API
-│   ├── AuthController.cs           # Autenticación y perfil de usuario
-│   ├── GastosController.cs         # CRUD de gastos
-│   ├── IngresosController.cs       # CRUD de ingresos
-│   ├── PresupuestosController.cs   # CRUD de presupuestos
-│   ├── MetasController.cs          # CRUD de metas
-│   ├── CategoriasController.cs     # CRUD de categorías
-│   ├── DashboardController.cs      # Datos para dashboard y gráficas
-│   └── ReportesController.cs       # Generación de reportes y exportación
-├── Models/              # Entidades del dominio
-│   ├── Gasto.cs
-│   ├── Ingreso.cs
-│   ├── Presupuesto.cs
-│   ├── Meta.cs
-│   └── Categoria.cs
-├── Dtos/                # Data Transfer Objects
-│   ├── AuthDtos.cs
-│   ├── GastoDto.cs
-│   ├── IngresoDto.cs
-│   ├── PresupuestoDto.cs
-│   ├── MetaDto.cs
-│   ├── CategoriaDto.cs
-│   ├── DashboardDto.cs
-│   └── UserProfileDto.cs
-├── Data/                # Contexto de base de datos
-│   └── FinanzasDbContext.cs
-├── Services/            # Servicios de negocio
-│   └── ExportService.cs
-├── Migrations/          # Migraciones de EF Core
-└── Program.cs           # Configuración de la aplicación
+├── Controllers/           # 27 controladores REST
+├── Services/              # 20+ servicios con interfaces
+├── Models/                # 20+ entidades de dominio
+├── Dtos/                  # 70+ Data Transfer Objects
+├── Data/
+│   ├── FinanzasDbContext.cs
+│   └── FinanzasDbContextFactory.cs
+├── Jobs/
+│   ├── NotificacionesJob.cs        # Alertas diarias (9:00 AM)
+│   ├── RecurrentesJob.cs           # Genera transacciones (cada hora)
+│   └── ReportesProgramadosJob.cs   # Envia reportes (7:00 AM)
+├── Hubs/
+│   └── NotificacionesHub.cs        # WebSocket real-time
+├── Migrations/            # 24 migraciones
+├── Program.cs             # Configuracion completa
+├── appsettings.json
+└── appsettings.Production.json
 ```
 
-## 📋 Funcionalidades
+## Endpoints de la API
 
-### Autenticación y Usuarios
-- ✅ Registro de nuevos usuarios
-- ✅ Login con JWT
-- ✅ Gestión de perfil de usuario
-- ✅ Cambio de contraseña
+### Autenticacion (`/api/Auth`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| POST | `/api/Auth/google` | Login con Google OAuth |
+| GET | `/api/Auth/profile` | Obtener perfil del usuario |
+| PUT | `/api/Auth/profile` | Actualizar nombre de usuario |
 
-### Gestión Financiera
-- ✅ **Gastos**: CRUD completo con categorización y tipo (Fijo/Variable)
-- ✅ **Ingresos**: CRUD completo con categorización
-- ✅ **Presupuestos**: Definición de límites por categoría con seguimiento
-- ✅ **Metas**: Seguimiento de objetivos de ahorro
-- ✅ **Categorías**: Gestión de categorías de gastos e ingresos
+### Gastos (`/api/Gastos`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Gastos` | Listar gastos (filtros, paginacion, tags) |
+| GET | `/api/Gastos/{id}` | Obtener gasto por ID |
+| POST | `/api/Gastos` | Crear gasto |
+| PUT | `/api/Gastos/{id}` | Actualizar gasto |
+| DELETE | `/api/Gastos/{id}` | Eliminar gasto |
+| GET | `/api/Gastos/{id}/con-detalles` | Gasto con sub-compras |
+| GET | `/api/Gastos/{id}/detalles` | Listar sub-compras |
+| POST | `/api/Gastos/{id}/detalles` | Agregar sub-compra |
+| PUT | `/api/Gastos/{id}/detalles/{detalleId}` | Editar sub-compra |
+| DELETE | `/api/Gastos/{id}/detalles/{detalleId}` | Eliminar sub-compra |
+
+### Ingresos (`/api/Ingresos`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Ingresos` | Listar ingresos (filtros, paginacion, tags) |
+| POST | `/api/Ingresos` | Crear ingreso |
+| PUT | `/api/Ingresos/{id}` | Actualizar ingreso |
+| DELETE | `/api/Ingresos/{id}` | Eliminar ingreso |
+
+### Cuentas (`/api/Cuentas`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Cuentas` | Listar cuentas |
+| POST | `/api/Cuentas` | Crear cuenta (Efectivo, Bancaria, Credito, Ahorros, Inversion) |
+| PUT | `/api/Cuentas/{id}` | Actualizar cuenta |
+| DELETE | `/api/Cuentas/{id}` | Eliminar cuenta (soft delete) |
+| GET | `/api/Cuentas/balance-total` | Balance total de todas las cuentas |
+
+### Transferencias (`/api/Transferencias`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Transferencias` | Listar transferencias |
+| POST | `/api/Transferencias` | Crear transferencia entre cuentas |
+
+### Presupuestos (`/api/Presupuestos`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Presupuestos` | Listar presupuestos con progreso |
+| POST | `/api/Presupuestos` | Crear presupuesto |
+| PUT | `/api/Presupuestos/{id}` | Actualizar presupuesto |
+| DELETE | `/api/Presupuestos/{id}` | Eliminar presupuesto |
+| GET | `/api/Presupuestos/alertas` | Presupuestos >80% gastado |
+| GET | `/api/Presupuestos/dashboard?periodo=` | Dashboard comparativo por periodo |
+
+Periodos soportados: `Semanal`, `Quincenal`, `Mensual`, `Trimestral`, `Semestral`, `Anual`
+
+### Metas (`/api/Metas`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Metas` | Listar metas |
+| POST | `/api/Metas` | Crear meta de ahorro |
+| PUT | `/api/Metas/{id}` | Actualizar meta |
+| DELETE | `/api/Metas/{id}` | Eliminar meta |
+| POST | `/api/Metas/{id}/abonar` | Abonar a meta |
+| GET | `/api/Metas/{id}/progreso` | Progreso detallado |
+| GET | `/api/Metas/proyecciones` | Proyecciones de completado |
+
+### Deudas (`/api/Deudas`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Deudas` | Listar deudas |
+| GET | `/api/Deudas/{id}` | Detalle de deuda |
+| POST | `/api/Deudas` | Registrar deuda |
+| PUT | `/api/Deudas/{id}` | Actualizar deuda |
+| DELETE | `/api/Deudas/{id}` | Eliminar deuda |
+| POST | `/api/Deudas/{id}/pagos` | Registrar pago (calcula interes/capital) |
+| GET | `/api/Deudas/{id}/pagos` | Historial de pagos |
+| GET | `/api/Deudas/{id}/proyeccion?pagoMensual=` | Proyeccion de liquidacion |
+
+Tipos: `TarjetaCredito`, `PrestamoPersonal`, `Hipoteca`, `PrestamoAuto`, `Otro`
+
+### Gastos Compartidos (`/api/gastos-compartidos`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/gastos-compartidos` | Listar gastos compartidos |
+| GET | `/api/gastos-compartidos/resumen` | Resumen de quien debe cuanto |
+| GET | `/api/gastos-compartidos/{id}` | Detalle con participantes |
+| POST | `/api/gastos-compartidos` | Crear gasto compartido |
+| DELETE | `/api/gastos-compartidos/{id}` | Eliminar |
+| PUT | `/api/gastos-compartidos/{gastoId}/participantes/{participanteId}/liquidar` | Registrar pago de participante |
+
+Metodos de division: `Equitativo`, `Porcentaje`, `MontoFijo`
+
+### Recurrentes
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/GastosRecurrentes` | Listar gastos recurrentes |
+| POST | `/api/GastosRecurrentes` | Crear |
+| PUT | `/api/GastosRecurrentes/{id}` | Actualizar |
+| DELETE | `/api/GastosRecurrentes/{id}` | Eliminar |
+| POST | `/api/GastosRecurrentes/{id}/generar` | Generar gasto ahora |
+| POST | `/api/GastosRecurrentes/generar-pendientes` | Generar todos los pendientes |
+| GET | `/api/IngresosRecurrentes` | Listar ingresos recurrentes |
+| POST | `/api/IngresosRecurrentes` | Crear |
+| POST | `/api/IngresosRecurrentes/{id}/generar` | Generar ingreso ahora |
+
+Frecuencias: `Semanal`, `Quincenal`, `Mensual`, `Anual`
 
 ### Dashboard y Reportes
-- ✅ Resumen mensual de finanzas
-- ✅ Gráficas de ingresos vs gastos
-- ✅ Distribución de gastos por categoría
-- ✅ Progreso de metas
-- ✅ Exportación a Excel
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/Dashboard/metrics` | Metricas completas del dashboard |
+| GET | `/api/Dashboard/flujo-caja` | Analisis de flujo de caja |
+| GET | `/api/CuentaDashboard` | Dashboard por cuenta |
+| GET | `/api/Reportes/tendencias?meses=` | Tendencias mensuales |
+| GET | `/api/Reportes/comparativa` | Comparativa mes a mes |
+| GET | `/api/Reportes/top-categorias` | Top categorias de gasto |
+| GET | `/api/Reportes/gastos-tipo` | Gastos fijos vs variables |
+| GET | `/api/Reportes/proyeccion` | Proyeccion del mes actual |
+| GET | `/api/Reportes/calendario` | Vista calendario de transacciones |
+| GET | `/api/Reportes/comparar-periodos` | Comparacion de periodos custom |
 
-## 🔐 Endpoints Principales
+### Exportacion (`/api/Export`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| POST | `/api/Export/excel` | Exportar a Excel |
+| POST | `/api/Export/pdf` | Exportar a PDF |
+| POST | `/api/Export/backup` | Backup completo en JSON |
 
-### Auth
-- `POST /api/Auth/register` - Registrar usuario
-- `POST /api/Auth/login` - Iniciar sesión
-- `GET /api/Auth/profile` - Obtener perfil
-- `PUT /api/Auth/profile` - Actualizar perfil
-- `PUT /api/Auth/change-password` - Cambiar contraseña
+### Importacion (`/api/Importacion`)
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| POST | `/api/Importacion/preview` | Preview de estructura CSV |
+| POST | `/api/Importacion/validate` | Validar con mapeo (detecta duplicados) |
+| POST | `/api/Importacion/ejecutar` | Ejecutar importacion |
 
-### Gastos
-- `GET /api/Gastos` - Listar gastos (con paginación y filtros)
-- `POST /api/Gastos` - Crear gasto
-- `PUT /api/Gastos/{id}` - Actualizar gasto
-- `DELETE /api/Gastos/{id}` - Eliminar gasto
+### Herramientas de Automatizacion
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/PlantillasGasto` | Listar plantillas de gasto |
+| POST | `/api/PlantillasGasto` | Crear plantilla |
+| POST | `/api/PlantillasGasto/{id}/usar` | Crear gasto desde plantilla |
+| GET | `/api/ReglasCategoria` | Listar reglas de auto-categorizacion |
+| POST | `/api/ReglasCategoria` | Crear regla |
+| GET | `/api/ReglasCategoria/sugerir?descripcion=&tipo=` | Sugerir categoria |
 
-### Ingresos
-- `GET /api/Ingresos` - Listar ingresos (con paginación y filtros)
-- `POST /api/Ingresos` - Crear ingreso
-- `PUT /api/Ingresos/{id}` - Actualizar ingreso
-- `DELETE /api/Ingresos/{id}` - Eliminar ingreso
+### Otros
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET/PUT | `/api/Configuracion` | Configuracion del usuario (moneda, idioma, tema) |
+| GET | `/api/Notificaciones` | Listar notificaciones |
+| GET | `/api/Notificaciones/no-leidas` | Conteo de no leidas |
+| GET/PUT | `/api/Notificaciones/configuracion` | Config de alertas |
+| CRUD | `/api/Categorias` | Categorias (jerarquicas con subcategorias) |
+| CRUD | `/api/Tags` | Tags para transacciones |
+| CRUD | `/api/Adjuntos` | Adjuntos PDF (max 5MB) |
+| CRUD | `/api/TipoCambio` | Tipos de cambio multi-moneda |
+| CRUD | `/api/ReportesProgramados` | Reportes automaticos por email |
 
-### Presupuestos
-- `GET /api/Presupuestos` - Listar presupuestos
-- `POST /api/Presupuestos` - Crear presupuesto
-- `PUT /api/Presupuestos/{id}` - Actualizar presupuesto
-- `DELETE /api/Presupuestos/{id}` - Eliminar presupuesto
+## Jobs en Background (Hangfire)
 
-### Dashboard
-- `GET /api/Dashboard?mes={mes}&ano={ano}` - Resumen del dashboard
-- `GET /api/Dashboard/grafica/ingresos-vs-gastos` - Gráfica comparativa
-- `GET /api/Dashboard/grafica/gastos-por-categoria` - Distribución de gastos
+| Job | Frecuencia | Descripcion |
+|---|---|---|
+| `verificar-alertas-diarias` | Diario 9:00 AM | Verifica presupuestos >80%, gastos inusuales, saldo bajo, pagos proximos |
+| `generar-transacciones-recurrentes` | Cada hora | Genera gastos/ingresos recurrentes pendientes |
+| `enviar-reportes-programados` | Diario 7:00 AM | Envia reportes semanales/mensuales por email |
 
-### Reportes
-- `GET /api/Reportes/excel` - Exportar datos a Excel
+## Notificaciones en Tiempo Real (SignalR)
 
-## ⚙️ Configuración
+Hub: `/hubs/notificaciones`
+- Autenticacion por JWT (token en query string)
+- Grupos por userId para entrega dirigida
+- Evento: `NuevaNotificacion`
 
-### Variables de Entorno (appsettings.json)
+## Seguridad
+
+- **JWT Bearer** con expiracion de 2 horas
+- **Google OAuth** para login sin password
+- **Rate Limiting**: 100 req/min global, 10 req/min en auth
+- **Identity**: Password 8+ chars, mayusculas, minusculas, digitos, lockout tras 5 intentos
+- **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, HSTS
+- **CORS**: Origenes restringidos, credenciales permitidas
+- **Multi-tenancy**: Todos los datos filtrados por UserId del JWT
+- **Validacion**: Data Annotations en todos los DTOs
+- **Cascade/Restrict**: DeleteBehavior configurado por relacion
+
+## Configuracion
+
+### appsettings.json
 
 ```json
 {
@@ -116,123 +242,85 @@ FinanzasPersonales.Api/
     "DefaultConnection": "Host=localhost;Database=finanzas_db;Username=postgres;Password=tu_password"
   },
   "Jwt": {
-    "Key": "tu_clave_secreta_muy_segura_minimo_32_caracteres",
-    "Issuer": "FinanzasPersonalesAPI",
-    "Audience": "FinanzasPersonalesApp"
+    "Key": "clave_secreta_minimo_32_caracteres",
+    "Issuer": "FinanzasPersonalesApi",
+    "Audience": "FinanzasPersonalesClients"
+  },
+  "Google": {
+    "ClientId": "tu-google-client-id"
+  },
+  "CorsSettings": {
+    "AllowedOrigins": ["http://localhost:5173", "https://tu-frontend.vercel.app"]
+  },
+  "EmailSettings": {
+    "SmtpServer": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SenderEmail": "tu-email@gmail.com",
+    "SenderName": "Finanzas Personales",
+    "Username": "tu-email@gmail.com",
+    "Password": "tu-app-password",
+    "EnableSsl": true
+  },
+  "HangfireSettings": {
+    "DashboardEnabled": true,
+    "DashboardPath": "/hangfire"
   }
 }
 ```
 
-## 🛠️ Instalación y Ejecución
+## Instalacion
 
 ### Prerrequisitos
 - .NET 8 SDK
 - PostgreSQL 12+
 
-### Paso 1: Clonar el repositorio
+### Setup
+
 ```bash
+# Clonar e ir al directorio
 cd FinanzasPersonales.Api
-```
 
-### Paso 2: Configurar la base de datos
-1. Crear base de datos en PostgreSQL:
-```sql
-CREATE DATABASE finanzas_db;
-```
+# Restaurar dependencias
+dotnet restore
 
-2. Actualizar `appsettings.json` con tus credenciales
+# Configurar appsettings.json con tu connection string y JWT key
 
-### Paso 3: Ejecutar migraciones
-```bash
-dotnet ef database update
-```
-
-### Paso 4: Ejecutar la aplicación
-```bash
+# Las migraciones se ejecutan automaticamente al iniciar
 dotnet run
 ```
 
-La API estará disponible en:
-- HTTP: `http://localhost:5030`
-- HTTPS: `https://localhost:7173`
-- Swagger: `http://localhost:5030/swagger`
+La API estara disponible en:
+- `http://localhost:5030` (HTTP)
+- `https://localhost:7173` (HTTPS)
+- `http://localhost:5030/swagger` (Documentacion interactiva)
+- `http://localhost:5030/hangfire` (Dashboard de jobs)
 
-## 📊 Migraciones de Base de Datos
+### Migraciones manuales
 
-### Crear una nueva migración
 ```bash
-dotnet ef migrations add NombreDeLaMigracion
-```
+# Crear nueva migracion
+dotnet ef migrations add NombreMigracion
 
-### Aplicar migraciones
-```bash
+# Aplicar migraciones
 dotnet ef database update
-```
 
-### Revertir última migración
-```bash
+# Revertir a migracion especifica
 dotnet ef database update NombreMigracionAnterior
 ```
 
-### Eliminar última migración
+## Base de Datos
+
+24 migraciones cubriendo: usuarios, gastos, ingresos, categorias (jerarquicas), presupuestos, metas, cuentas, transferencias, tags, notificaciones, configuracion, adjuntos, gastos recurrentes, ingresos recurrentes, notas, subcategorias, reglas de auto-categorizacion, importacion CSV, plantillas, deudas y pagos, gastos compartidos, alertas, multi-moneda, reportes programados, detalle de gastos.
+
+## Tests
+
 ```bash
-dotnet ef migrations remove
+cd FinanzasPersonales.Tests
+dotnet test
 ```
-
-## 🔒 Seguridad
-
-- **Autenticación**: JWT con expiración de 24 horas
-- **Autorización**: Todos los endpoints requieren token excepto login/registro
-- **Validación**: Validación de modelos con Data Annotations
-- **CORS**: Configurado para permitir origen del frontend
-- **Contraseñas**: Hash con ASP.NET Core Identity
-
-## 📝 Notas Importantes
-
-1. **DateTime UTC**: Todas las fechas se manejan en UTC para compatibilidad con PostgreSQL
-2. **Paginación**: Los endpoints de listado soportan paginación con parámetros `pagina` y `tamañoPagina`
-3. **Filtros**: Soportan filtros por mes, año, categoría y tipo
-4. **Soft Delete**: Actualmente se usa eliminación física (futuro: implementar soft delete)
-
-## 🐛 Troubleshooting
-
-### Error: "no existe la columna"
-Ejecutar migraciones pendientes:
-```bash
-dotnet ef database update
-```
-
-### Error: "DateTime UTC"
-Asegurarse de que todas las fechas se convierten a UTC antes de guardar en PostgreSQL
-
-### Error de conexión a PostgreSQL
-Verificar:
-1. PostgreSQL está corriendo
-2. Credenciales en `appsettings.json` son correctas
-3. Base de datos existe
-
-## 📚 Documentación Adicional
-
-- Swagger UI disponible en `/swagger` cuando la app está corriendo
-- [Documentación oficial de .NET](https://docs.microsoft.com/dotnet/)
-- [Entity Framework Core](https://docs.microsoft.com/ef/core/)
-- [ASP.NET Core Identity](https://docs.microsoft.com/aspnet/core/security/authentication/identity)
-
-## 👨‍💻 Desarrollo
-
-### Agregar un nuevo endpoint
-1. Crear DTO en `/Dtos`
-2. Crear controlador en `/Controllers`
-3. Agregar validaciones necesarias
-4. Documentar con XML comments
-
-### Agregar una nueva entidad
-1. Crear modelo en `/Models`
-2. Agregar DbSet en `FinanzasDbContext.cs`
-3. Crear migración: `dotnet ef migrations add AgregarEntidadX`
-4. Aplicar migración: `dotnet ef database update`
 
 ---
 
-**Versión**: 1.0.0  
-**Última actualización**: Diciembre 2025
+**Version**: 2.0.0
+**Framework**: .NET 8.0
+**Ultima actualizacion**: Marzo 2026
