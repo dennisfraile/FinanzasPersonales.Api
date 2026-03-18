@@ -331,7 +331,7 @@ namespace FinanzasPersonales.Api.Services
 
             // Top 5 categorias
             var top5 = await _context.Gastos
-                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual && g.CategoriaId != null)
+                .Where(g => g.UserId == userId && g.Fecha >= primerDiaMesActual && g.Fecha <= ultimoDiaMesActual)
                 .Include(g => g.Categoria)
                 .GroupBy(g => new { g.CategoriaId, g.Categoria!.Nombre })
                 .Select(g => new CategoriaTopDto

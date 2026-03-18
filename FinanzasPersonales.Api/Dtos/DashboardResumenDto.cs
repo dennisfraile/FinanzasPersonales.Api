@@ -3,7 +3,7 @@
     public class DashboardResumenDto
     {
         // --- Resumen del Período Actual(Quincena) ---
-        public string PeriodoActual { get; set; }
+        public string PeriodoActual { get; set; } = null!;
         public decimal IngresosAsignados { get; set; } // El dinero que estás usando (ej. de la Q2 anterior)
         public decimal AhorroBaseCalculado { get; set; } // El 10% de los ingresos asignados
         public decimal GastosFijosPagados { get; set; }

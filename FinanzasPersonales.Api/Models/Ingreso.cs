@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations.Schema; // Para [ForeignKey]
-using Microsoft.AspNetCore.Identity; // Para IdentityUser
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanzasPersonales.Api.Models
 {
@@ -17,7 +16,7 @@ namespace FinanzasPersonales.Api.Models
         public int CategoriaId { get; set; } // La llave foránea
 
         [ForeignKey("CategoriaId")]
-        public virtual Categoria Categoria { get; set; } // Propiedad de navegación
+        public virtual Categoria Categoria { get; set; } = null!;
 
         [StringLength(500)]
         public string? Descripcion { get; set; } // Descripción opcional del ingreso
@@ -27,10 +26,10 @@ namespace FinanzasPersonales.Api.Models
         public decimal Monto { get; set; }
 
         [Required]
-        public string UserId { get; set; } // El ID del usuario de la tabla AspNetUsers
+        public string UserId { get; set; } = null!;
 
         [ForeignKey("UserId")]
-        public virtual IdentityUser User { get; set; } // Propiedad de navegación
+        public virtual IdentityUser User { get; set; } = null!;
 
         // Relación con Cuenta
         public int? CuentaId { get; set; }

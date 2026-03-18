@@ -328,10 +328,8 @@ namespace FinanzasPersonales.Api.Services
         }
 
         /// <summary>
-        /// Para Quincenal: si DiaDePago <= 15, el segundo dia es el ultimo del mes (o 30).
-        /// Si DiaDePago > 15, el segundo dia es DiaDePago - 15.
-        /// Ejemplo: DiaDePago=15 → segundo dia = 28/29/30/31 (ultimo del mes)
-        /// Ejemplo: DiaDePago=1 → segundo dia = 16
+        /// Para Quincenal: si DiaDePago es menor o igual a 15, el segundo dia es el ultimo del mes.
+        /// Si DiaDePago es mayor a 15, el segundo dia es DiaDePago - 15.
         /// </summary>
         private int GetSegundoDiaQuincenal(int diaDePago, int year, int month)
         {

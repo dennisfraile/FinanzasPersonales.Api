@@ -80,6 +80,7 @@ namespace FinanzasPersonales.Api.Dtos
         public string? Descripcion { get; set; }
         public decimal Monto { get; set; }
         public int? CuentaId { get; set; }
+        public string? CuentaNombre { get; set; }
         public string? Notas { get; set; }
         public List<int> TagIds { get; set; } = new List<int>();
         public int CantidadDetalles { get; set; }

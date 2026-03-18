@@ -33,6 +33,7 @@ namespace FinanzasPersonales.Api.Services
             var query = _context.Ingresos
                 .Where(i => i.UserId == userId)
                 .Include(i => i.Categoria)
+                .Include(i => i.Cuenta)
                 .Include(i => i.IngresoTags)
                     .ThenInclude(it => it.Tag)
                 .AsQueryable();
@@ -82,6 +83,7 @@ namespace FinanzasPersonales.Api.Services
                     Descripcion = i.Descripcion,
                     Monto = i.Monto,
                     CuentaId = i.CuentaId,
+                    CuentaNombre = i.Cuenta != null ? i.Cuenta.Nombre : null,
                     Notas = i.Notas,
                     TagIds = i.IngresoTags.Select(it => it.TagId).ToList()
                 })

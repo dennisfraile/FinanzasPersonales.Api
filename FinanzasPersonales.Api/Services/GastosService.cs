@@ -35,6 +35,7 @@ namespace FinanzasPersonales.Api.Services
             var query = _context.Gastos
                 .Where(g => g.UserId == userId)
                 .Include(g => g.Categoria)
+                .Include(g => g.Cuenta)
                 .Include(g => g.GastoTags)
                     .ThenInclude(gt => gt.Tag)
                 .Include(g => g.Detalles)
@@ -92,6 +93,7 @@ namespace FinanzasPersonales.Api.Services
                     Descripcion = g.Descripcion,
                     Monto = g.Monto,
                     CuentaId = g.CuentaId,
+                    CuentaNombre = g.Cuenta != null ? g.Cuenta.Nombre : null,
                     Notas = g.Notas,
                     TagIds = g.GastoTags.Select(gt => gt.TagId).ToList(),
                     CantidadDetalles = g.Detalles.Count,
