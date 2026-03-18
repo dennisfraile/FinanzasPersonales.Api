@@ -144,10 +144,10 @@ namespace FinanzasPersonales.Api.Services
                     Id = i.Id,
                     Fecha = i.Fecha,
                     Tipo = "Ingreso",
-                    Descripcion = i.Descripcion,
-                    Categoria = i.Categoria != null ? i.Categoria.Nombre : null,
+                    Descripcion = i.Descripcion ?? string.Empty,
+                    Categoria = i.Categoria != null ? i.Categoria.Nombre : string.Empty,
                     Monto = i.Monto,
-                    EsRecurrente = i.Descripcion.Contains("(Recurrente)")
+                    EsRecurrente = i.Descripcion != null && i.Descripcion.Contains("(Recurrente)")
                 })
                 .ToListAsync();
 
@@ -160,10 +160,10 @@ namespace FinanzasPersonales.Api.Services
                     Id = g.Id,
                     Fecha = g.Fecha,
                     Tipo = "Gasto",
-                    Descripcion = g.Descripcion,
-                    Categoria = g.Categoria != null ? g.Categoria.Nombre : null,
+                    Descripcion = g.Descripcion ?? string.Empty,
+                    Categoria = g.Categoria != null ? g.Categoria.Nombre : string.Empty,
                     Monto = g.Monto,
-                    EsRecurrente = g.Descripcion.Contains("(Recurrente)")
+                    EsRecurrente = g.Descripcion != null && g.Descripcion.Contains("(Recurrente)")
                 })
                 .ToListAsync();
 

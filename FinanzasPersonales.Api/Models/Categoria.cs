@@ -11,18 +11,18 @@ namespace FinanzasPersonales.Api.Models
 
         [Required]
         [StringLength(100)]
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = null!;
 
         [Required]
         [StringLength(50)]
-        public string Tipo { get; set; } // "Ingreso" o "Gasto"
+        public string Tipo { get; set; } = null!;
 
         // --- Vinculación con el Usuario ---
         [Required]
-        public string UserId { get; set; }
+        public string UserId { get; set; } = null!;
 
         [ForeignKey("UserId")]
-        public virtual IdentityUser User { get; set; }
+        public virtual IdentityUser User { get; set; } = null!;
 
         // Subcategorías
         public int? ParentCategoriaId { get; set; }

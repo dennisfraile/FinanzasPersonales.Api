@@ -92,7 +92,7 @@ namespace FinanzasPersonales.Api.Controllers
         ///     }
         ///
         /// </remarks>
-        /// <param name="meta">El objeto de Meta a crear desde el cuerpo de la solicitud.</param>
+        /// <param name="dto">El objeto de Meta a crear desde el cuerpo de la solicitud.</param>
         /// <returns>La mueva meta creada con su ID asignado por la BD.</returns>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
@@ -126,7 +126,7 @@ namespace FinanzasPersonales.Api.Controllers
         /// Actualiza una meta existente usando su ID.
         /// </summary>
         /// <param name="id">El ID de la meta que se desea modificar.</param>
-        /// <param name="meta">El objeto Mete con la información actualizada.</param>
+        /// <param name="dto">El objeto con la información actualizada.</param>
         /// <returns>Un código 204 (Sin Contenido) si la actualización fue exitosa.</returns>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

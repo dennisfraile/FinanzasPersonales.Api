@@ -42,6 +42,6 @@ namespace FinanzasPersonales.Api.Dtos
     {
         public List<DetalleGastoDto> Detalles { get; set; } = new();
         public decimal MontoConsumido { get; set; }
-        public decimal MontoDisponible { get; set; }
+        public new decimal MontoDisponible { get; set; }
     }
 }

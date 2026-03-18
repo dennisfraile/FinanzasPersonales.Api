@@ -581,18 +581,18 @@ namespace FinanzasPersonales.Api.Services
                 {
                     Id = g.Id,
                     Tipo = "Gasto",
-                    Descripcion = g.Descripcion,
+                    Descripcion = g.Descripcion ?? string.Empty,
                     Monto = g.Monto,
-                    CategoriaNombre = categorias.GetValueOrDefault(g.CategoriaId)
+                    CategoriaNombre = categorias.GetValueOrDefault(g.CategoriaId) ?? string.Empty
                 }));
 
                 transacciones.AddRange(ingresosDelDia.Select(i => new TransaccionSummaryDto
                 {
                     Id = i.Id,
                     Tipo = "Ingreso",
-                    Descripcion = i.Descripcion,
+                    Descripcion = i.Descripcion ?? string.Empty,
                     Monto = i.Monto,
-                    CategoriaNombre = categorias.GetValueOrDefault(i.CategoriaId)
+                    CategoriaNombre = categorias.GetValueOrDefault(i.CategoriaId) ?? string.Empty
                 }));
 
                 if (transacciones.Any())

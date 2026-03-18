@@ -12,7 +12,7 @@ namespace FinanzasPersonales.Api.Dtos
 
         [Required]
         [StringLength(50)]
-        public string Tipo { get; set; } // "Fijo" o "Variable"
+        public string Tipo { get; set; } = null!;
 
         [StringLength(250)]
         public string? Descripcion { get; set; }

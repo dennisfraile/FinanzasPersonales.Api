@@ -163,7 +163,7 @@ namespace FinanzasPersonales.Api.Controllers
         /// Actualiza el nombre o tipo de una categoría existente.
         /// </summary>
         /// <param name="id">El ID de la categoría a modificar.</param>
-        /// <param name="categoria">El objeto Categoría con los datos actualizados.</param>
+        /// <param name="dto">El objeto con los datos actualizados.</param>
         /// <returns>Un 204 (Sin Contenido) si fue exitoso.</returns>
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations.Schema; // Para [ForeignKey]
-using Microsoft.AspNetCore.Identity; // Para IdentityUser
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanzasPersonales.Api.Models
 {
@@ -13,7 +12,7 @@ namespace FinanzasPersonales.Api.Models
 
         [Required]
         [StringLength(100)] // Límite de 100 caracteres
-        public string Metas { get; set; }
+        public string Metas { get; set; } = null!;
 
         [Required]
         [Column(TypeName = "decimal(18, 2)")]
@@ -28,10 +27,10 @@ namespace FinanzasPersonales.Api.Models
         public decimal MontoRestante { get; set; }
 
         [Required]
-        public string UserId { get; set; } // El ID del usuario de la tabla AspNetUsers
+        public string UserId { get; set; } = null!;
 
         [ForeignKey("UserId")]
-        public virtual IdentityUser User { get; set; } // Propiedad de navegación
+        public virtual IdentityUser User { get; set; } = null!;
 
         // Relación con Cuenta (opcional: en qué cuenta está el ahorro)
         public int? CuentaId { get; set; }
