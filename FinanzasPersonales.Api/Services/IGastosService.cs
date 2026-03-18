@@ -27,5 +27,7 @@ namespace FinanzasPersonales.Api.Services
         Task<bool> UpdateGastoAsync(string userId, int id, UpdateGastoDto dto);
 
         Task<bool> DeleteGastoAsync(string userId, int id);
+
+        Task<(bool success, string? error)> TransferirSaldoAsync(string userId, TransferirSaldoGastoDto dto);
     }
 }
