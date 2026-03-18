@@ -125,7 +125,7 @@ namespace FinanzasPersonales.Api.Services
 
                 var resultado = await _metasService.AbonarMetaAsync(dto.MetaId.Value, userId, dto.Monto);
                 if (!resultado)
-                    return (false, "Meta no encontrada o no pertenece al usuario");
+                    return (false, "Recurso no encontrado o acceso denegado");
 
                 return (true, null);
             }

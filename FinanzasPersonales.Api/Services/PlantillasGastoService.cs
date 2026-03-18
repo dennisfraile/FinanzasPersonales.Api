@@ -55,7 +55,7 @@ namespace FinanzasPersonales.Api.Services
             var categoriaExiste = await _context.Categorias
                 .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
             if (!categoriaExiste)
-                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var plantilla = new PlantillaGasto
             {
@@ -103,7 +103,7 @@ namespace FinanzasPersonales.Api.Services
             var categoriaExiste = await _context.Categorias
                 .AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
             if (!categoriaExiste)
-                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             plantilla.Nombre = dto.Nombre;
             plantilla.CategoriaId = dto.CategoriaId;
@@ -137,7 +137,7 @@ namespace FinanzasPersonales.Api.Services
                 .FirstOrDefaultAsync(p => p.Id == plantillaId && p.UserId == userId);
 
             if (plantilla == null)
-                throw new InvalidOperationException("La plantilla no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var monto = dto.Monto ?? plantilla.Monto;
             if (!monto.HasValue || monto.Value <= 0)

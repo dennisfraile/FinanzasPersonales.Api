@@ -54,7 +54,7 @@ namespace FinanzasPersonales.Api.Services
             {
                 var catExiste = await _context.Categorias.AnyAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
                 if (!catExiste)
-                    throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+                    throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
             }
 
             var gastoCompartido = new GastoCompartido

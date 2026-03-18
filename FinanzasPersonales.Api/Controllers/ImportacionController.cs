@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 using System.Text.Json;
 using FinanzasPersonales.Api.Dtos;
@@ -11,6 +12,7 @@ namespace FinanzasPersonales.Api.Controllers
     [ApiController]
     [Produces("application/json")]
     [Authorize]
+    [EnableRateLimiting("uploads")]
     public class ImportacionController : ControllerBase
     {
         private readonly IImportacionCsvService _importService;

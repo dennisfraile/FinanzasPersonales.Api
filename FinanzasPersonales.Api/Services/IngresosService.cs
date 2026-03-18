@@ -132,7 +132,7 @@ namespace FinanzasPersonales.Api.Services
             var categoria = await _context.Categorias
                 .FirstOrDefaultAsync(c => c.Id == dto.CategoriaId && c.UserId == userId);
             if (categoria == null)
-                throw new InvalidOperationException("La categoría no existe o no pertenece al usuario.");
+                throw new InvalidOperationException("Recurso no encontrado o acceso denegado.");
 
             var ingreso = new Ingreso
             {
