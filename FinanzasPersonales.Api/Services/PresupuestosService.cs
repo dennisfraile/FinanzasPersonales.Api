@@ -103,9 +103,22 @@ namespace FinanzasPersonales.Api.Services
             }
 
             inicio = DateTime.SpecifyKind(inicio, DateTimeKind.Utc);
-            fin = DateTime.SpecifyKind(fin, DateTimeKind.Utc);
+            // Usar el final del último día (23:59:59) para incluir gastos de todo el día
+            fin = DateTime.SpecifyKind(fin, DateTimeKind.Utc).Date.AddDays(1).AddTicks(-1);
 
             return (inicio, fin);
+        }
+
+        /// <summary>
+        /// Obtiene el número de semana ISO 8601 para una fecha.
+        /// </summary>
+        private static int GetISOWeekNumber(DateTime date)
+        {
+            var day = System.Globalization.CultureInfo.InvariantCulture.Calendar.GetDayOfWeek(date);
+            if (day >= DayOfWeek.Monday && day <= DayOfWeek.Wednesday)
+                date = date.AddDays(3);
+            return System.Globalization.CultureInfo.InvariantCulture.Calendar.GetWeekOfYear(
+                date, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
         }
 
         public async Task<List<PresupuestoDto>> GetPresupuestosAsync(string userId, int? mes = null, int? ano = null)
@@ -123,6 +136,23 @@ namespace FinanzasPersonales.Api.Services
 
             if (!presupuestos.Any())
                 return new List<PresupuestoDto>();
+
+            // Auto-actualizar presupuestos semanales a la semana actual
+            var ahora = DateTime.UtcNow;
+            var semanaActual = GetISOWeekNumber(ahora);
+            var semanalesActualizados = false;
+            foreach (var p in presupuestos.Where(p => p.Periodo == "Semanal"))
+            {
+                if (p.SemanaAplicable != semanaActual || p.AnoAplicable != ahora.Year)
+                {
+                    p.SemanaAplicable = semanaActual;
+                    p.AnoAplicable = ahora.Year;
+                    p.MesAplicable = ahora.Month;
+                    semanalesActualizados = true;
+                }
+            }
+            if (semanalesActualizados)
+                await _context.SaveChangesAsync();
 
             var gastadoPorPresupuesto = await CalcularGastadoBatchAsync(userId, presupuestos);
 
