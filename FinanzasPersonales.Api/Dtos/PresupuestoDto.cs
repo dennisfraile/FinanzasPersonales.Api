@@ -35,6 +35,33 @@ namespace FinanzasPersonales.Api.Dtos
         /// Porcentaje proyectado incluyendo comprometidos
         /// </summary>
         public decimal PorcentajeProyectado { get; set; }
+
+        /// <summary>
+        /// Transferencias de saldo que afectan esta categoría en el periodo
+        /// </summary>
+        public List<TransferenciaGastoResumenDto> Transferencias { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Resumen de una transferencia de saldo entre gastos de diferentes categorías
+    /// </summary>
+    public class TransferenciaGastoResumenDto
+    {
+        public int Id { get; set; }
+        public decimal Monto { get; set; }
+        /// <summary>
+        /// Nombre de la categoría origen
+        /// </summary>
+        public string CategoriaOrigenNombre { get; set; } = string.Empty;
+        /// <summary>
+        /// Nombre de la categoría destino
+        /// </summary>
+        public string CategoriaDestinoNombre { get; set; } = string.Empty;
+        /// <summary>
+        /// "entrada" si esta categoría recibió, "salida" si esta categoría cedió
+        /// </summary>
+        public string Direccion { get; set; } = string.Empty;
+        public DateTime Fecha { get; set; }
     }
 
     /// <summary>

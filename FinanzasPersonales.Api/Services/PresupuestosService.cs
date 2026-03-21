@@ -156,6 +156,18 @@ namespace FinanzasPersonales.Api.Services
 
             var gastadoPorPresupuesto = await CalcularGastadoBatchAsync(userId, presupuestos);
 
+            // Obtener transferencias del usuario para el rango de todos los presupuestos
+            var categoriaIds = presupuestos.Select(p => p.CategoriaId).Distinct().ToList();
+            var todasTransferencias = await _context.TransferenciasGasto
+                .Where(t => t.UserId == userId &&
+                    (categoriaIds.Contains(t.CategoriaOrigenId) || categoriaIds.Contains(t.CategoriaDestinoId)))
+                .ToListAsync();
+
+            // Map categoriaId -> nombre para las transferencias
+            var categoriaNombres = presupuestos
+                .Where(p => p.Categoria != null)
+                .ToDictionary(p => p.CategoriaId, p => p.Categoria!.Nombre);
+
             var resultado = new List<PresupuestoDto>();
 
             foreach (var presupuesto in presupuestos)
@@ -164,6 +176,22 @@ namespace FinanzasPersonales.Api.Services
                 var (inicio, fin) = CalcularRangoFechas(presupuesto);
                 var comprometido = await CalcularComprometidoAsync(userId, presupuesto.CategoriaId, inicio, fin);
                 var totalProyectado = gastadoActual + comprometido;
+
+                // Transferencias que afectan esta categoría en el periodo
+                var transferencias = todasTransferencias
+                    .Where(t => t.Fecha >= inicio && t.Fecha <= fin &&
+                        (t.CategoriaOrigenId == presupuesto.CategoriaId || t.CategoriaDestinoId == presupuesto.CategoriaId))
+                    .Select(t => new TransferenciaGastoResumenDto
+                    {
+                        Id = t.Id,
+                        Monto = t.Monto,
+                        CategoriaOrigenNombre = categoriaNombres.GetValueOrDefault(t.CategoriaOrigenId, "Otra"),
+                        CategoriaDestinoNombre = categoriaNombres.GetValueOrDefault(t.CategoriaDestinoId, "Otra"),
+                        Direccion = t.CategoriaOrigenId == presupuesto.CategoriaId ? "salida" : "entrada",
+                        Fecha = t.Fecha
+                    })
+                    .OrderByDescending(t => t.Fecha)
+                    .ToList();
 
                 resultado.Add(new PresupuestoDto
                 {
@@ -182,6 +210,7 @@ namespace FinanzasPersonales.Api.Services
                         : 0,
                     FechaInicio = inicio,
                     FechaFin = fin,
+                    Transferencias = transferencias,
                     Comprometido = comprometido,
                     TotalProyectado = totalProyectado,
                     PorcentajeProyectado = presupuesto.MontoLimite > 0

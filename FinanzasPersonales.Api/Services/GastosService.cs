@@ -101,6 +101,40 @@ namespace FinanzasPersonales.Api.Services
                 })
                 .ToListAsync();
 
+            // Cargar transferencias para los gastos de esta página
+            var gastoIds = items.Select(i => i.Id).ToList();
+            if (gastoIds.Any())
+            {
+                var transferencias = await _context.TransferenciasGasto
+                    .Where(t => t.UserId == userId &&
+                        (gastoIds.Contains(t.GastoOrigenId) || gastoIds.Contains(t.GastoDestinoId)))
+                    .Select(t => new
+                    {
+                        t.GastoOrigenId,
+                        t.GastoDestinoId,
+                        t.Monto,
+                        t.Fecha,
+                        OrigenDesc = _context.Gastos.Where(g => g.Id == t.GastoOrigenId).Select(g => g.Descripcion ?? g.Categoria!.Nombre).FirstOrDefault() ?? "",
+                        DestinoDesc = _context.Gastos.Where(g => g.Id == t.GastoDestinoId).Select(g => g.Descripcion ?? g.Categoria!.Nombre).FirstOrDefault() ?? ""
+                    })
+                    .ToListAsync();
+
+                foreach (var item in items)
+                {
+                    item.Transferencias = transferencias
+                        .Where(t => t.GastoOrigenId == item.Id || t.GastoDestinoId == item.Id)
+                        .Select(t => new TransferenciaGastoItemDto
+                        {
+                            Monto = t.Monto,
+                            Direccion = t.GastoOrigenId == item.Id ? "salida" : "entrada",
+                            OtroGastoDescripcion = t.GastoOrigenId == item.Id ? t.DestinoDesc : t.OrigenDesc,
+                            Fecha = t.Fecha
+                        })
+                        .OrderByDescending(t => t.Fecha)
+                        .ToList();
+                }
+            }
+
             return new PaginatedResponseDto<GastoDto>
             {
                 Items = items,
@@ -363,6 +397,19 @@ namespace FinanzasPersonales.Api.Services
 
             gastoOrigen.Monto -= dto.Monto;
             gastoDestino.Monto += dto.Monto;
+
+            // Registrar historial de la transferencia
+            var transferencia = new TransferenciaGasto
+            {
+                UserId = userId,
+                GastoOrigenId = dto.GastoOrigenId,
+                GastoDestinoId = dto.GastoDestinoId,
+                Monto = dto.Monto,
+                CategoriaOrigenId = gastoOrigen.CategoriaId,
+                CategoriaDestinoId = gastoDestino.CategoriaId,
+                Fecha = DateTime.UtcNow
+            };
+            _context.TransferenciasGasto.Add(transferencia);
 
             await _context.SaveChangesAsync();
             return (true, null);
