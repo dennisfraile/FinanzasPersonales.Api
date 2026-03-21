@@ -85,5 +85,27 @@ namespace FinanzasPersonales.Api.Dtos
         public List<int> TagIds { get; set; } = new List<int>();
         public int CantidadDetalles { get; set; }
         public decimal? MontoDisponible { get; set; }
+
+        /// <summary>
+        /// Transferencias de saldo que afectan este gasto
+        /// </summary>
+        public List<TransferenciaGastoItemDto> Transferencias { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Transferencia de saldo individual en el contexto de un gasto
+    /// </summary>
+    public class TransferenciaGastoItemDto
+    {
+        public decimal Monto { get; set; }
+        /// <summary>
+        /// "entrada" o "salida" respecto al gasto actual
+        /// </summary>
+        public string Direccion { get; set; } = string.Empty;
+        /// <summary>
+        /// Descripción o categoría del otro gasto involucrado
+        /// </summary>
+        public string OtroGastoDescripcion { get; set; } = string.Empty;
+        public DateTime Fecha { get; set; }
     }
 }

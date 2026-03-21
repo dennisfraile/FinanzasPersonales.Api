@@ -129,6 +129,19 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(d => d.GastoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Configuración TransferenciaGasto -> Gasto (dos relaciones)
+            modelBuilder.Entity<TransferenciaGasto>()
+                .HasOne(t => t.GastoOrigen)
+                .WithMany()
+                .HasForeignKey(t => t.GastoOrigenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TransferenciaGasto>()
+                .HasOne(t => t.GastoDestino)
+                .WithMany()
+                .HasForeignKey(t => t.GastoDestinoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Configuración GastoProgramado -> Categoria
             modelBuilder.Entity<GastoProgramado>()
                 .HasOne(gp => gp.Categoria)
@@ -185,6 +198,9 @@ namespace FinanzasPersonales.Api.Data
 
         // Gastos programados (recibos, cobros con fecha límite)
         public DbSet<GastoProgramado> GastosProgramados { get; set; }
+
+        // Historial de transferencias entre gastos
+        public DbSet<TransferenciaGasto> TransferenciasGasto { get; set; }
 
         // Tags y relaciones many-to-many
         public DbSet<Tag> Tags { get; set; }
