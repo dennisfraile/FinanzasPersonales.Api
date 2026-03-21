@@ -129,6 +129,27 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(d => d.GastoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Configuración GastoProgramado -> Categoria
+            modelBuilder.Entity<GastoProgramado>()
+                .HasOne(gp => gp.Categoria)
+                .WithMany()
+                .HasForeignKey(gp => gp.CategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración GastoProgramado -> Cuenta
+            modelBuilder.Entity<GastoProgramado>()
+                .HasOne(gp => gp.Cuenta)
+                .WithMany()
+                .HasForeignKey(gp => gp.CuentaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Configuración GastoProgramado -> GastoRecurrente
+            modelBuilder.Entity<GastoProgramado>()
+                .HasOne(gp => gp.GastoRecurrente)
+                .WithMany()
+                .HasForeignKey(gp => gp.GastoRecurrenteId)
+                .OnDelete(DeleteBehavior.SetNull);
+
         }
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {
@@ -161,6 +182,9 @@ namespace FinanzasPersonales.Api.Data
 
         // Detalles de gastos (sub-compras)
         public DbSet<DetalleGasto> DetallesGasto { get; set; }
+
+        // Gastos programados (recibos, cobros con fecha límite)
+        public DbSet<GastoProgramado> GastosProgramados { get; set; }
 
         // Tags y relaciones many-to-many
         public DbSet<Tag> Tags { get; set; }
