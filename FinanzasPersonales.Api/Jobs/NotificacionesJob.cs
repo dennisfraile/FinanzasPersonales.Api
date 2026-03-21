@@ -12,26 +12,35 @@ namespace FinanzasPersonales.Api.Jobs
         private readonly FinanzasDbContext _context;
         private readonly IEmailService _emailService;
         private readonly INotificacionService _notificacionService;
+        private readonly IGastosProgramadosService _gastosProgramadosService;
         private readonly ILogger<NotificacionesJob> _logger;
 
         public NotificacionesJob(
             FinanzasDbContext context,
             IEmailService emailService,
             INotificacionService notificacionService,
+            IGastosProgramadosService gastosProgramadosService,
             ILogger<NotificacionesJob> logger)
         {
             _context = context;
             _emailService = emailService;
             _notificacionService = notificacionService;
+            _gastosProgramadosService = gastosProgramadosService;
             _logger = logger;
         }
 
         /// <summary>
-        /// Verifica presupuestos cercanos al límite y envía alertas
+        /// Umbrales progresivos para alertas de presupuesto
+        /// </summary>
+        private static readonly int[] UmbralesProgresivos = { 50, 80, 95, 100 };
+
+        /// <summary>
+        /// Verifica presupuestos cercanos al límite con alertas progresivas (50%, 80%, 95%, 100%)
+        /// e incluye gastos programados pendientes (comprometidos) en el cálculo.
         /// </summary>
         public async Task VerificarAlertasPresupuestosAsync()
         {
-            _logger.LogInformation("Iniciando verificación de alertas de presupuestos...");
+            _logger.LogInformation("Iniciando verificación de alertas de presupuestos (con umbrales progresivos)...");
 
             var mesActual = DateTime.Now.Month;
             var anoActual = DateTime.Now.Year;
@@ -44,42 +53,87 @@ namespace FinanzasPersonales.Api.Jobs
 
             foreach (var presupuesto in presupuestos)
             {
-                // Calcular gasto actual del mes
+                var (inicio, fin) = PresupuestosService.CalcularRangoFechas(presupuesto);
+
+                // Calcular gasto actual (ya registrado)
                 var gastadoActual = await _context.Gastos
                     .Where(g => g.UserId == presupuesto.UserId
                                && g.CategoriaId == presupuesto.CategoriaId
-                               && g.Fecha.Month == mesActual
-                               && g.Fecha.Year == anoActual)
+                               && g.Fecha >= inicio && g.Fecha <= fin)
                     .SumAsync(g => (decimal?)g.Monto) ?? 0;
 
-                var porcentaje = (gastadoActual / presupuesto.MontoLimite) * 100;
+                // Calcular gasto comprometido (programados pendientes en el rango)
+                var comprometido = await _gastosProgramadosService.GetTotalComprometidoAsync(
+                    presupuesto.UserId, presupuesto.CategoriaId, inicio, fin);
 
-                // Alertar si supera el 80%
-                if (porcentaje >= 80)
+                var totalProyectado = gastadoActual + comprometido;
+                var porcentajeReal = presupuesto.MontoLimite > 0
+                    ? (gastadoActual / presupuesto.MontoLimite) * 100 : 0;
+                var porcentajeProyectado = presupuesto.MontoLimite > 0
+                    ? (totalProyectado / presupuesto.MontoLimite) * 100 : 0;
+
+                // Determinar el umbral más alto alcanzado
+                var umbralAlcanzado = UmbralesProgresivos
+                    .Where(u => porcentajeProyectado >= u)
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                if (umbralAlcanzado == 0)
+                    continue;
+
+                // Verificar si ya se envió notificación para este umbral hoy
+                var hoy = DateTime.UtcNow.Date;
+                var yaNotificado = await _context.Notificaciones
+                    .AnyAsync(n => n.UserId == presupuesto.UserId
+                        && n.Tipo == "PresupuestoAlerta"
+                        && n.ReferenciaId == presupuesto.Id
+                        && n.FechaCreacion >= hoy
+                        && n.DatosAdicionales != null
+                        && n.DatosAdicionales.Contains($"\"umbral\":{umbralAlcanzado}"));
+
+                if (yaNotificado)
+                    continue;
+
+                var categoriaNombre = presupuesto.Categoria?.Nombre ?? "Categoría";
+                var nivelAlerta = umbralAlcanzado switch
+                {
+                    >= 100 => "Límite alcanzado",
+                    >= 95 => "Casi agotado",
+                    >= 80 => "Cuidado",
+                    _ => "Aviso"
+                };
+
+                var mensaje = $"{nivelAlerta}: Has utilizado {porcentajeReal:N1}% de tu presupuesto de {categoriaNombre} ({gastadoActual:C} de {presupuesto.MontoLimite:C}).";
+                if (comprometido > 0)
+                    mensaje += $" Además, tienes {comprometido:C} comprometidos en gastos programados pendientes (total proyectado: {porcentajeProyectado:N1}%).";
+
+                await _notificacionService.CrearNotificacionAsync(
+                    presupuesto.UserId,
+                    "PresupuestoAlerta",
+                    $"Presupuesto {categoriaNombre}: {nivelAlerta} ({porcentajeProyectado:N0}%)",
+                    mensaje,
+                    presupuesto.Id,
+                    $"{{\"umbral\":{umbralAlcanzado},\"porcentajeReal\":{porcentajeReal:N1},\"porcentajeProyectado\":{porcentajeProyectado:N1},\"comprometido\":{comprometido}}}"
+                );
+
+                // Enviar email solo en umbrales altos (80%+)
+                if (umbralAlcanzado >= 80)
                 {
                     var email = presupuesto.User?.Email;
                     if (!string.IsNullOrEmpty(email))
                     {
-                        // Crear notificación
-                        await _notificacionService.CrearNotificacionAsync(
-                            presupuesto.UserId,
-                            "PresupuestoAlerta",
-                            $"⚠️ Alerta: Presupuesto {presupuesto.Categoria?.Nombre}",
-                            $"Has utilizado {porcentaje:N1}% de tu presupuesto ({gastadoActual:C} de {presupuesto.MontoLimite:C})"
-                        );
-
-                        // Enviar email
                         await _emailService.SendAlertaPresupuestoAsync(
                             email,
-                            presupuesto.Categoria?.Nombre ?? "Categoría",
+                            categoriaNombre,
                             gastadoActual,
                             presupuesto.MontoLimite,
-                            porcentaje
+                            porcentajeProyectado
                         );
-
-                        _logger.LogInformation($"Alerta enviada para presupuesto {presupuesto.Id} - {porcentaje:N1}%");
                     }
                 }
+
+                _logger.LogInformation("Alerta presupuesto {Id} ({Categoria}): {Nivel} - real {PReal:N1}%, proyectado {PProy:N1}%",
+                    presupuesto.Id, categoriaNombre, nivelAlerta, porcentajeReal, porcentajeProyectado);
             }
 
             _logger.LogInformation("Verificación de presupuestos completada.");
@@ -301,6 +355,116 @@ namespace FinanzasPersonales.Api.Jobs
         }
 
         /// <summary>
+        /// Verifica gastos programados próximos a vencer y envía recordatorios.
+        /// También alerta sobre gastos de monto variable que requieren confirmación manual.
+        /// </summary>
+        public async Task VerificarGastosProgramadosProximosAsync()
+        {
+            _logger.LogInformation("Verificando gastos programados próximos a vencer...");
+
+            var configs = await _context.ConfiguracionesNotificaciones
+                .Where(c => c.AlertaPagoRecurrente)
+                .ToListAsync();
+
+            foreach (var config in configs)
+            {
+                var limite = DateTime.UtcNow.AddDays(config.DiasAntesPagoRecurrente);
+
+                var programadosProximos = await _context.GastosProgramados
+                    .Where(gp => gp.UserId == config.UserId
+                        && gp.Estado == "Pendiente"
+                        && gp.FechaVencimiento <= limite
+                        && gp.FechaVencimiento >= DateTime.UtcNow)
+                    .Include(gp => gp.Categoria)
+                    .Include(gp => gp.Cuenta)
+                    .ToListAsync();
+
+                foreach (var gp in programadosProximos)
+                {
+                    var diasRestantes = (int)(gp.FechaVencimiento.Date - DateTime.UtcNow.Date).TotalDays;
+
+                    // Verificar si ya se envió notificación hoy para este gasto programado
+                    var hoy = DateTime.UtcNow.Date;
+                    var yaNotificado = await _context.Notificaciones
+                        .AnyAsync(n => n.UserId == config.UserId
+                            && n.Tipo == "Informativa"
+                            && n.ReferenciaId == gp.Id
+                            && n.FechaCreacion >= hoy
+                            && n.DatosAdicionales != null
+                            && n.DatosAdicionales.Contains("\"tipo\":\"gastoProgramadoProximo\""));
+
+                    if (yaNotificado)
+                        continue;
+
+                    var tipoMonto = gp.EsMontoVariable ? " (monto variable, requiere confirmación)" : "";
+                    var cuentaInfo = gp.Cuenta != null ? $" - Cuenta: {gp.Cuenta.Nombre}" : "";
+
+                    await _notificacionService.CrearNotificacionAsync(
+                        config.UserId,
+                        "Informativa",
+                        $"Pago programado próximo: {gp.Descripcion}",
+                        $"Tu gasto de {gp.Monto:C} ({gp.Categoria?.Nombre}) vence en {diasRestantes} día(s) ({gp.FechaVencimiento:dd/MM/yyyy}){tipoMonto}{cuentaInfo}.",
+                        gp.Id,
+                        $"{{\"tipo\":\"gastoProgramadoProximo\",\"gastoProgramadoId\":{gp.Id},\"diasRestantes\":{diasRestantes},\"esVariable\":{gp.EsMontoVariable.ToString().ToLower()}}}"
+                    );
+                }
+            }
+
+            _logger.LogInformation("Verificación de gastos programados próximos completada.");
+        }
+
+        /// <summary>
+        /// Marca gastos programados vencidos y procesa cobros automáticos de gastos fijos.
+        /// </summary>
+        public async Task ProcesarGastosProgramadosAsync()
+        {
+            _logger.LogInformation("Procesando gastos programados (vencidos y cobros automáticos)...");
+
+            // 1. Procesar cobros automáticos (gastos fijos con cuenta, cuya fecha es hoy)
+            var cobrosAutomaticos = await _gastosProgramadosService.ProcesarCobrosAutomaticosAsync();
+            if (cobrosAutomaticos > 0)
+                _logger.LogInformation("Se procesaron {Count} cobros automáticos", cobrosAutomaticos);
+
+            // 2. Marcar vencidos (gastos cuya fecha ya pasó y siguen pendientes)
+            var vencidos = await _gastosProgramadosService.MarcarVencidosAsync();
+            if (vencidos > 0)
+            {
+                _logger.LogInformation("Se marcaron {Count} gastos como vencidos", vencidos);
+
+                // Notificar sobre gastos vencidos
+                var gastosVencidosHoy = await _context.GastosProgramados
+                    .Where(gp => gp.Estado == "Vencido")
+                    .Include(gp => gp.Categoria)
+                    .ToListAsync();
+
+                // Solo notificar los recién vencidos (sin notificación previa de vencimiento)
+                foreach (var gp in gastosVencidosHoy)
+                {
+                    var yaNotificadoVencimiento = await _context.Notificaciones
+                        .AnyAsync(n => n.UserId == gp.UserId
+                            && n.Tipo == "Informativa"
+                            && n.ReferenciaId == gp.Id
+                            && n.DatosAdicionales != null
+                            && n.DatosAdicionales.Contains("\"tipo\":\"gastoProgramadoVencido\""));
+
+                    if (yaNotificadoVencimiento)
+                        continue;
+
+                    await _notificacionService.CrearNotificacionAsync(
+                        gp.UserId,
+                        "Informativa",
+                        $"Gasto vencido: {gp.Descripcion}",
+                        $"El pago de {gp.Monto:C} ({gp.Categoria?.Nombre}) venció el {gp.FechaVencimiento:dd/MM/yyyy}. Puedes registrar el pago manualmente o cancelarlo.",
+                        gp.Id,
+                        $"{{\"tipo\":\"gastoProgramadoVencido\",\"gastoProgramadoId\":{gp.Id}}}"
+                    );
+                }
+            }
+
+            _logger.LogInformation("Procesamiento de gastos programados completado.");
+        }
+
+        /// <summary>
         /// Método principal que ejecuta todas las verificaciones
         /// </summary>
         public async Task EjecutarVerificacionesAsync()
@@ -313,6 +477,8 @@ namespace FinanzasPersonales.Api.Jobs
             await VerificarPagosRecurrentesAsync();
             await VerificarBalanceBajoAsync();
             await VerificarSurplusQuincenalAsync();
+            await VerificarGastosProgramadosProximosAsync();
+            await ProcesarGastosProgramadosAsync();
 
             _logger.LogInformation("=== Job de notificaciones completado ===");
         }

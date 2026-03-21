@@ -16,6 +16,20 @@ namespace FinanzasPersonales.Api.Services
         }
 
         /// <summary>
+        /// Calcula el total comprometido (gastos programados pendientes) para una categoría en un rango.
+        /// </summary>
+        private async Task<decimal> CalcularComprometidoAsync(string userId, int categoriaId, DateTime inicio, DateTime fin)
+        {
+            return await _context.GastosProgramados
+                .Where(gp => gp.UserId == userId
+                    && gp.CategoriaId == categoriaId
+                    && gp.Estado == "Pendiente"
+                    && gp.FechaVencimiento >= inicio
+                    && gp.FechaVencimiento <= fin)
+                .SumAsync(gp => (decimal?)gp.Monto) ?? 0;
+        }
+
+        /// <summary>
         /// Calcula el rango de fechas para un presupuesto según su periodo.
         /// </summary>
         public static (DateTime inicio, DateTime fin) CalcularRangoFechas(Presupuesto presupuesto)
@@ -112,12 +126,16 @@ namespace FinanzasPersonales.Api.Services
 
             var gastadoPorPresupuesto = await CalcularGastadoBatchAsync(userId, presupuestos);
 
-            var resultado = presupuestos.Select(presupuesto =>
+            var resultado = new List<PresupuestoDto>();
+
+            foreach (var presupuesto in presupuestos)
             {
                 var gastadoActual = gastadoPorPresupuesto.GetValueOrDefault(presupuesto.Id, 0m);
                 var (inicio, fin) = CalcularRangoFechas(presupuesto);
+                var comprometido = await CalcularComprometidoAsync(userId, presupuesto.CategoriaId, inicio, fin);
+                var totalProyectado = gastadoActual + comprometido;
 
-                return new PresupuestoDto
+                resultado.Add(new PresupuestoDto
                 {
                     Id = presupuesto.Id,
                     CategoriaId = presupuesto.CategoriaId,
@@ -133,9 +151,14 @@ namespace FinanzasPersonales.Api.Services
                         ? (gastadoActual / presupuesto.MontoLimite) * 100
                         : 0,
                     FechaInicio = inicio,
-                    FechaFin = fin
-                };
-            }).ToList();
+                    FechaFin = fin,
+                    Comprometido = comprometido,
+                    TotalProyectado = totalProyectado,
+                    PorcentajeProyectado = presupuesto.MontoLimite > 0
+                        ? (totalProyectado / presupuesto.MontoLimite) * 100
+                        : 0
+                });
+            }
 
             return resultado;
         }
@@ -151,6 +174,8 @@ namespace FinanzasPersonales.Api.Services
 
             var gastadoActual = await CalcularGastadoActual(userId, presupuesto);
             var (inicio, fin) = CalcularRangoFechas(presupuesto);
+            var comprometido = await CalcularComprometidoAsync(userId, presupuesto.CategoriaId, inicio, fin);
+            var totalProyectado = gastadoActual + comprometido;
 
             return new PresupuestoDto
             {
@@ -168,7 +193,12 @@ namespace FinanzasPersonales.Api.Services
                     ? (gastadoActual / presupuesto.MontoLimite) * 100
                     : 0,
                 FechaInicio = inicio,
-                FechaFin = fin
+                FechaFin = fin,
+                Comprometido = comprometido,
+                TotalProyectado = totalProyectado,
+                PorcentajeProyectado = presupuesto.MontoLimite > 0
+                    ? (totalProyectado / presupuesto.MontoLimite) * 100
+                    : 0
             };
         }
 

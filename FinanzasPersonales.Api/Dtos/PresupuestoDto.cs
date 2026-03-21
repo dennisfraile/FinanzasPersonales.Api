@@ -20,6 +20,21 @@ namespace FinanzasPersonales.Api.Dtos
         public decimal PorcentajeUtilizado { get; set; }
         public DateTime FechaInicio { get; set; }
         public DateTime FechaFin { get; set; }
+
+        /// <summary>
+        /// Monto comprometido en gastos programados pendientes dentro del periodo
+        /// </summary>
+        public decimal Comprometido { get; set; }
+
+        /// <summary>
+        /// Total proyectado = GastadoActual + Comprometido
+        /// </summary>
+        public decimal TotalProyectado { get; set; }
+
+        /// <summary>
+        /// Porcentaje proyectado incluyendo comprometidos
+        /// </summary>
+        public decimal PorcentajeProyectado { get; set; }
     }
 
     /// <summary>
