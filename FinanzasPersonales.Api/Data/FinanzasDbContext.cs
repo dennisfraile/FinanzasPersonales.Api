@@ -214,5 +214,11 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<GastoTag> GastoTags { get; set; }
         public DbSet<IngresoTag> IngresoTags { get; set; }
+
+        // Tokens para compartir gastos compartidos por link
+        public DbSet<GastoCompartidoToken> GastosCompartidosTokens { get; set; }
+
+        // Dashboard compartido (read-only shared links)
+        public DbSet<DashboardCompartido> DashboardsCompartidos { get; set; }
     }
 }
