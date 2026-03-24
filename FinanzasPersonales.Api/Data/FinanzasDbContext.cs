@@ -80,6 +80,13 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(p => p.CategoriaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Configuración PlantillaIngreso -> Categoria
+            modelBuilder.Entity<PlantillaIngreso>()
+                .HasOne(p => p.Categoria)
+                .WithMany()
+                .HasForeignKey(p => p.CategoriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Configuración ReglaCategoriaAutomatica -> Categoria
             modelBuilder.Entity<ReglaCategoriaAutomatica>()
                 .HasOne(r => r.Categoria)
@@ -186,6 +193,7 @@ namespace FinanzasPersonales.Api.Data
         public DbSet<ReglaCategoriaAutomatica> ReglasCategoriaAutomatica { get; set; }
         public DbSet<ImportacionCsv> ImportacionesCsv { get; set; }
         public DbSet<PlantillaGasto> PlantillasGasto { get; set; }
+        public DbSet<PlantillaIngreso> PlantillasIngreso { get; set; }
         public DbSet<Deuda> Deudas { get; set; }
         public DbSet<PagoDeuda> PagosDeuda { get; set; }
         public DbSet<GastoCompartido> GastosCompartidos { get; set; }
