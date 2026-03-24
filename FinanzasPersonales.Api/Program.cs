@@ -104,6 +104,7 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IIngresosRecurrentesS
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IReglasCategoriaService, FinanzasPersonales.Api.Services.ReglasCategoriaService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IImportacionCsvService, FinanzasPersonales.Api.Services.ImportacionCsvService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IPlantillasGastoService, FinanzasPersonales.Api.Services.PlantillasGastoService>();
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.IPlantillasIngresoService, FinanzasPersonales.Api.Services.PlantillasIngresoService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IDeudasService, FinanzasPersonales.Api.Services.DeudasService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosCompartidosService, FinanzasPersonales.Api.Services.GastosCompartidosService>();
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITipoCambioService, FinanzasPersonales.Api.Services.TipoCambioService>();

@@ -31,3 +31,5 @@ logs/
 ## Ignorar archivos temporales
 *.tmp
 *.temp
+
+.fake

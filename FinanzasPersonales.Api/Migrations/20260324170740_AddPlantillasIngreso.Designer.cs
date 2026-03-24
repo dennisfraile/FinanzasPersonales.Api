@@ -3,6 +3,7 @@ using System;
 using FinanzasPersonales.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanzasPersonales.Api.Migrations
 {
     [DbContext(typeof(FinanzasDbContext))]
-    partial class FinanzasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324170740_AddPlantillasIngreso")]
+    partial class AddPlantillasIngreso
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -259,48 +262,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.ToTable("Cuentas");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.DashboardCompartido", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FechaExpiracion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("NombreDestinatario")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("SeccionesPermitidas")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("DashboardsCompartidos");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.DetalleGasto", b =>
                 {
                     b.Property<int>("Id")
@@ -501,42 +462,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("GastosCompartidos");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoCompartidoToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Activo")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("FechaExpiracion")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("GastoCompartidoId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GastoCompartidoId");
-
-                    b.ToTable("GastosCompartidosTokens");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoProgramado", b =>
@@ -1688,17 +1613,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.DashboardCompartido", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("FinanzasPersonales.Api.Models.DetalleGasto", b =>
                 {
                     b.HasOne("FinanzasPersonales.Api.Models.Gasto", "Gasto")
@@ -1769,17 +1683,6 @@ namespace FinanzasPersonales.Api.Migrations
                     b.Navigation("Categoria");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoCompartidoToken", b =>
-                {
-                    b.HasOne("FinanzasPersonales.Api.Models.GastoCompartido", "GastoCompartido")
-                        .WithMany()
-                        .HasForeignKey("GastoCompartidoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GastoCompartido");
                 });
 
             modelBuilder.Entity("FinanzasPersonales.Api.Models.GastoProgramado", b =>

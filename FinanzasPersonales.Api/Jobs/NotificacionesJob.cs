@@ -362,22 +362,38 @@ namespace FinanzasPersonales.Api.Jobs
         {
             _logger.LogInformation("Verificando gastos programados próximos a vencer...");
 
+            // Buscar todos los gastos programados pendientes en los próximos 3 días (default)
+            // para TODOS los usuarios, con o sin configuración
+            var defaultDias = 3;
+
+            // Usuarios con configuración personalizada
             var configs = await _context.ConfiguracionesNotificaciones
                 .Where(c => c.AlertaPagoRecurrente)
+                .ToDictionaryAsync(c => c.UserId, c => c.DiasAntesPagoRecurrente);
+
+            // Todos los gastos programados pendientes próximos a vencer
+            var limiteMaximo = DateTime.UtcNow.AddDays(Math.Max(defaultDias, configs.Values.Any() ? configs.Values.Max() : defaultDias));
+
+            var todosProximos = await _context.GastosProgramados
+                .Where(gp => gp.Estado == "Pendiente"
+                    && gp.FechaVencimiento <= limiteMaximo
+                    && gp.FechaVencimiento >= DateTime.UtcNow)
+                .Include(gp => gp.Categoria)
+                .Include(gp => gp.Cuenta)
                 .ToListAsync();
 
-            foreach (var config in configs)
-            {
-                var limite = DateTime.UtcNow.AddDays(config.DiasAntesPagoRecurrente);
+            // Agrupar por usuario
+            var porUsuario = todosProximos.GroupBy(gp => gp.UserId);
 
-                var programadosProximos = await _context.GastosProgramados
-                    .Where(gp => gp.UserId == config.UserId
-                        && gp.Estado == "Pendiente"
-                        && gp.FechaVencimiento <= limite
-                        && gp.FechaVencimiento >= DateTime.UtcNow)
-                    .Include(gp => gp.Categoria)
-                    .Include(gp => gp.Cuenta)
-                    .ToListAsync();
+            foreach (var grupo in porUsuario)
+            {
+                var userId = grupo.Key;
+                var diasAntes = configs.GetValueOrDefault(userId, defaultDias);
+                var limite = DateTime.UtcNow.AddDays(diasAntes);
+
+                var programadosProximos = grupo
+                    .Where(gp => gp.FechaVencimiento <= limite)
+                    .ToList();
 
                 foreach (var gp in programadosProximos)
                 {
@@ -386,7 +402,7 @@ namespace FinanzasPersonales.Api.Jobs
                     // Verificar si ya se envió notificación hoy para este gasto programado
                     var hoy = DateTime.UtcNow.Date;
                     var yaNotificado = await _context.Notificaciones
-                        .AnyAsync(n => n.UserId == config.UserId
+                        .AnyAsync(n => n.UserId == userId
                             && n.Tipo == "Informativa"
                             && n.ReferenciaId == gp.Id
                             && n.FechaCreacion >= hoy
@@ -400,7 +416,7 @@ namespace FinanzasPersonales.Api.Jobs
                     var cuentaInfo = gp.Cuenta != null ? $" - Cuenta: {gp.Cuenta.Nombre}" : "";
 
                     await _notificacionService.CrearNotificacionAsync(
-                        config.UserId,
+                        userId,
                         "Informativa",
                         $"Pago programado próximo: {gp.Descripcion}",
                         $"Tu gasto de {gp.Monto:C} ({gp.Categoria?.Nombre}) vence en {diasRestantes} día(s) ({gp.FechaVencimiento:dd/MM/yyyy}){tipoMonto}{cuentaInfo}.",

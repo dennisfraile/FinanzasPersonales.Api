@@ -35,6 +35,11 @@ namespace FinanzasPersonales.Api.Models
 
         public int? SemanaAplicable { get; set; } // 1-53, solo para periodo Semanal
 
+        /// <summary>
+        /// Si es true, el sobrante del periodo anterior se suma al limite del periodo actual.
+        /// </summary>
+        public bool PermiteRollover { get; set; } = false;
+
         [Required]
         public required string UserId { get; set; }
 

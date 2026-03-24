@@ -13,17 +13,20 @@ namespace FinanzasPersonales.Api.Jobs
         private readonly FinanzasDbContext _context;
         private readonly IIngresosRecurrentesService _ingresosService;
         private readonly IGastosRecurrentesService _gastosService;
+        private readonly IMetasService _metasService;
         private readonly ILogger<RecurrentesJob> _logger;
 
         public RecurrentesJob(
             FinanzasDbContext context,
             IIngresosRecurrentesService ingresosService,
             IGastosRecurrentesService gastosService,
+            IMetasService metasService,
             ILogger<RecurrentesJob> logger)
         {
             _context = context;
             _ingresosService = ingresosService;
             _gastosService = gastosService;
+            _metasService = metasService;
             _logger = logger;
         }
 
@@ -82,9 +85,34 @@ namespace FinanzasPersonales.Api.Jobs
                 }
             }
 
+            // Abonos automáticos a metas
+            var totalAbonosGenerados = 0;
+            var usersConAbonosPendientes = await _context.Metas
+                .Where(m => m.AbonoAutomatico
+                    && m.ProximoAbono.HasValue && m.ProximoAbono <= DateTime.UtcNow
+                    && m.AhorroActual < m.MontoTotal)
+                .Select(m => m.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var userId in usersConAbonosPendientes)
+            {
+                try
+                {
+                    var generados = await _metasService.GenerarAbonosAutomaticosAsync(userId);
+                    totalAbonosGenerados += generados;
+                    if (generados > 0)
+                        _logger.LogInformation("Usuario {UserId}: {Count} abono(s) automático(s) a metas generado(s)", userId, generados);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error generando abonos automáticos para usuario {UserId}", userId);
+                }
+            }
+
             _logger.LogInformation(
-                "=== Job de recurrentes completado: {Ingresos} ingreso(s), {Gastos} gasto(s) generados ===",
-                totalIngresosGenerados, totalGastosGenerados);
+                "=== Job de recurrentes completado: {Ingresos} ingreso(s), {Gastos} gasto(s), {Abonos} abono(s) a metas generados ===",
+                totalIngresosGenerados, totalGastosGenerados, totalAbonosGenerados);
         }
     }
 }

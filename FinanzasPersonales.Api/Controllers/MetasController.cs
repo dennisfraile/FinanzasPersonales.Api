@@ -113,8 +113,24 @@ namespace FinanzasPersonales.Api.Controllers
                 MontoTotal = dto.MontoTotal,
                 AhorroActual = dto.AhorroActual,
                 MontoRestante = dto.MontoRestante,
+                CuentaId = dto.CuentaId,
+                AbonoAutomatico = dto.AbonoAutomatico,
+                MontoAbono = dto.MontoAbono,
+                FrecuenciaAbono = dto.FrecuenciaAbono,
+                DiaAbono = dto.DiaAbono,
                 UserId = userId // Asignar desde el token
             };
+
+            // Calcular próximo abono si se activa
+            if (dto.AbonoAutomatico && dto.DiaAbono.HasValue)
+            {
+                var ahora = DateTime.UtcNow;
+                var dia = Math.Min(dto.DiaAbono.Value, DateTime.DaysInMonth(ahora.Year, ahora.Month));
+                var proximaFecha = new DateTime(ahora.Year, ahora.Month, dia, 0, 0, 0, DateTimeKind.Utc);
+                if (proximaFecha <= ahora)
+                    proximaFecha = proximaFecha.AddMonths(1);
+                meta.ProximoAbono = proximaFecha;
+            }
 
             _context.Metas.Add(meta);
             await _context.SaveChangesAsync();
@@ -155,7 +171,27 @@ namespace FinanzasPersonales.Api.Controllers
             metaExistente.MontoTotal = dto.MontoTotal;
             metaExistente.AhorroActual = dto.AhorroActual;
             metaExistente.MontoRestante = dto.MontoRestante;
+            metaExistente.CuentaId = dto.CuentaId;
+            metaExistente.AbonoAutomatico = dto.AbonoAutomatico;
+            metaExistente.MontoAbono = dto.MontoAbono;
+            metaExistente.FrecuenciaAbono = dto.FrecuenciaAbono;
+            metaExistente.DiaAbono = dto.DiaAbono;
             // UserId NO se modifica, se mantiene el original
+
+            // Calcular próximo abono si se activa y no tiene fecha
+            if (dto.AbonoAutomatico && dto.DiaAbono.HasValue && !metaExistente.ProximoAbono.HasValue)
+            {
+                var ahora = DateTime.UtcNow;
+                var dia = Math.Min(dto.DiaAbono.Value, DateTime.DaysInMonth(ahora.Year, ahora.Month));
+                var proximaFecha = new DateTime(ahora.Year, ahora.Month, dia, 0, 0, 0, DateTimeKind.Utc);
+                if (proximaFecha <= ahora)
+                    proximaFecha = proximaFecha.AddMonths(1);
+                metaExistente.ProximoAbono = proximaFecha;
+            }
+            if (!dto.AbonoAutomatico)
+            {
+                metaExistente.ProximoAbono = null;
+            }
 
             try
             {

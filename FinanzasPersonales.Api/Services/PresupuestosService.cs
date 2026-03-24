@@ -175,6 +175,8 @@ namespace FinanzasPersonales.Api.Services
                 var gastadoActual = gastadoPorPresupuesto.GetValueOrDefault(presupuesto.Id, 0m);
                 var (inicio, fin) = CalcularRangoFechas(presupuesto);
                 var comprometido = await CalcularComprometidoAsync(userId, presupuesto.CategoriaId, inicio, fin);
+                var rollover = await CalcularRolloverAsync(userId, presupuesto);
+                var limiteEfectivo = presupuesto.MontoLimite + rollover;
                 var totalProyectado = gastadoActual + comprometido;
 
                 // Transferencias que afectan esta categoría en el periodo
@@ -204,18 +206,21 @@ namespace FinanzasPersonales.Api.Services
                     AnoAplicable = presupuesto.AnoAplicable,
                     SemanaAplicable = presupuesto.SemanaAplicable,
                     GastadoActual = gastadoActual,
-                    Disponible = presupuesto.MontoLimite - gastadoActual,
-                    PorcentajeUtilizado = presupuesto.MontoLimite > 0
-                        ? (gastadoActual / presupuesto.MontoLimite) * 100
+                    Disponible = limiteEfectivo - gastadoActual,
+                    PorcentajeUtilizado = limiteEfectivo > 0
+                        ? (gastadoActual / limiteEfectivo) * 100
                         : 0,
                     FechaInicio = inicio,
                     FechaFin = fin,
                     Transferencias = transferencias,
                     Comprometido = comprometido,
                     TotalProyectado = totalProyectado,
-                    PorcentajeProyectado = presupuesto.MontoLimite > 0
-                        ? (totalProyectado / presupuesto.MontoLimite) * 100
-                        : 0
+                    PorcentajeProyectado = limiteEfectivo > 0
+                        ? (totalProyectado / limiteEfectivo) * 100
+                        : 0,
+                    PermiteRollover = presupuesto.PermiteRollover,
+                    Rollover = rollover,
+                    LimiteEfectivo = limiteEfectivo
                 });
             }
 
@@ -296,6 +301,7 @@ namespace FinanzasPersonales.Api.Services
                 MesAplicable = dto.MesAplicable,
                 AnoAplicable = dto.AnoAplicable,
                 SemanaAplicable = dto.SemanaAplicable,
+                PermiteRollover = dto.PermiteRollover,
                 UserId = userId
             };
 
@@ -316,6 +322,7 @@ namespace FinanzasPersonales.Api.Services
 
             presupuesto.MontoLimite = dto.MontoLimite;
             presupuesto.Periodo = dto.Periodo;
+            presupuesto.PermiteRollover = dto.PermiteRollover;
 
             try
             {
@@ -483,6 +490,103 @@ namespace FinanzasPersonales.Api.Services
                 TotalDisponible = comparaciones.Sum(c => c.MontoLimite) - comparaciones.Sum(c => c.GastadoActual),
                 Comparaciones = comparaciones
             };
+        }
+
+        /// <summary>
+        /// Calcula el rollover (sobrante del periodo anterior) para un presupuesto.
+        /// Retorna el monto no gastado del periodo inmediatamente anterior.
+        /// </summary>
+        private async Task<decimal> CalcularRolloverAsync(string userId, Presupuesto presupuesto)
+        {
+            if (!presupuesto.PermiteRollover)
+                return 0;
+
+            // Crear un presupuesto "virtual" del periodo anterior para calcular su rango
+            var anterior = new Presupuesto
+            {
+                CategoriaId = presupuesto.CategoriaId,
+                MontoLimite = presupuesto.MontoLimite,
+                Periodo = presupuesto.Periodo,
+                MesAplicable = presupuesto.MesAplicable,
+                AnoAplicable = presupuesto.AnoAplicable,
+                SemanaAplicable = presupuesto.SemanaAplicable,
+                UserId = userId
+            };
+
+            // Retroceder un periodo
+            switch (presupuesto.Periodo)
+            {
+                case "Semanal":
+                    var semana = (anterior.SemanaAplicable ?? 1) - 1;
+                    if (semana < 1)
+                    {
+                        anterior.AnoAplicable--;
+                        semana = GetISOWeekNumber(new DateTime(anterior.AnoAplicable, 12, 28));
+                    }
+                    anterior.SemanaAplicable = semana;
+                    break;
+                case "Quincenal":
+                    // No retroceder, la quincena actual se determina por el día actual
+                    // Invertir: si estamos en primera quincena, el anterior es la segunda del mes pasado
+                    var dia = DateTime.UtcNow.Day;
+                    if (dia <= 15)
+                    {
+                        // Anterior = segunda quincena del mes pasado
+                        if (anterior.MesAplicable == 1)
+                        {
+                            anterior.MesAplicable = 12;
+                            anterior.AnoAplicable--;
+                        }
+                        else
+                        {
+                            anterior.MesAplicable--;
+                        }
+                    }
+                    // Si dia > 15, anterior = primera quincena del mismo mes (se calcula automáticamente)
+                    break;
+                case "Mensual":
+                    if (anterior.MesAplicable == 1)
+                    {
+                        anterior.MesAplicable = 12;
+                        anterior.AnoAplicable--;
+                    }
+                    else
+                    {
+                        anterior.MesAplicable--;
+                    }
+                    break;
+                case "Trimestral":
+                    anterior.MesAplicable -= 3;
+                    if (anterior.MesAplicable < 1)
+                    {
+                        anterior.MesAplicable += 12;
+                        anterior.AnoAplicable--;
+                    }
+                    break;
+                case "Semestral":
+                    anterior.MesAplicable -= 6;
+                    if (anterior.MesAplicable < 1)
+                    {
+                        anterior.MesAplicable += 12;
+                        anterior.AnoAplicable--;
+                    }
+                    break;
+                case "Anual":
+                    anterior.AnoAplicable--;
+                    break;
+            }
+
+            var (inicioAnterior, finAnterior) = CalcularRangoFechas(anterior);
+
+            var gastadoAnterior = await _context.Gastos
+                .Where(g => g.UserId == userId &&
+                           g.CategoriaId == presupuesto.CategoriaId &&
+                           g.Fecha >= inicioAnterior &&
+                           g.Fecha <= finAnterior)
+                .SumAsync(g => (decimal?)g.Monto) ?? 0;
+
+            var sobrante = presupuesto.MontoLimite - gastadoAnterior;
+            return sobrante > 0 ? sobrante : 0;
         }
 
         /// <summary>
