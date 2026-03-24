@@ -37,5 +37,20 @@ namespace FinanzasPersonales.Api.Models
 
         [ForeignKey("CuentaId")]
         public virtual Cuenta? Cuenta { get; set; }
+
+        // Auto-contribución recurrente
+        public bool AbonoAutomatico { get; set; } = false;
+
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal? MontoAbono { get; set; }
+
+        [StringLength(50)]
+        public string? FrecuenciaAbono { get; set; } // "Semanal", "Quincenal", "Mensual"
+
+        public int? DiaAbono { get; set; } // Día del mes o semana para el abono
+
+        public DateTime? ProximoAbono { get; set; }
+
+        public DateTime? UltimoAbono { get; set; }
     }
 }

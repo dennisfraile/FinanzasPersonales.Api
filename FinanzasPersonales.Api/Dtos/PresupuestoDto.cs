@@ -40,6 +40,21 @@ namespace FinanzasPersonales.Api.Dtos
         /// Transferencias de saldo que afectan esta categoría en el periodo
         /// </summary>
         public List<TransferenciaGastoResumenDto> Transferencias { get; set; } = new();
+
+        /// <summary>
+        /// Si el presupuesto permite acumular sobrante del periodo anterior
+        /// </summary>
+        public bool PermiteRollover { get; set; }
+
+        /// <summary>
+        /// Monto acumulado del periodo anterior (sobrante que se sumó al límite)
+        /// </summary>
+        public decimal Rollover { get; set; }
+
+        /// <summary>
+        /// Límite efectivo = MontoLimite + Rollover
+        /// </summary>
+        public decimal LimiteEfectivo { get; set; }
     }
 
     /// <summary>

@@ -14,5 +14,7 @@ namespace FinanzasPersonales.Api.Dtos
         [Required]
         [RegularExpression("^(Semanal|Quincenal|Mensual|Trimestral|Semestral|Anual)$", ErrorMessage = "El período debe ser 'Semanal', 'Quincenal', 'Mensual', 'Trimestral', 'Semestral' o 'Anual'.")]
         public required string Periodo { get; set; }
+
+        public bool PermiteRollover { get; set; } = false;
     }
 }

@@ -28,5 +28,7 @@ namespace FinanzasPersonales.Api.Dtos
 
         [Range(1, 53, ErrorMessage = "La semana debe estar entre 1 y 53.")]
         public int? SemanaAplicable { get; set; }
+
+        public bool PermiteRollover { get; set; } = false;
     }
 }

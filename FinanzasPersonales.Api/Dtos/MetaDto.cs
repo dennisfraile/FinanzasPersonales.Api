@@ -23,6 +23,12 @@ namespace FinanzasPersonales.Api.Dtos
 
         // Relación con cuenta (opcional: en qué cuenta está el ahorro)
         public int? CuentaId { get; set; }
+
+        // Auto-contribución
+        public bool AbonoAutomatico { get; set; } = false;
+        public decimal? MontoAbono { get; set; }
+        public string? FrecuenciaAbono { get; set; }
+        public int? DiaAbono { get; set; }
     }
 
     /// <summary>
@@ -49,6 +55,12 @@ namespace FinanzasPersonales.Api.Dtos
 
         // Relación con cuenta (opcional: en qué cuenta está el ahorro)
         public int? CuentaId { get; set; }
+
+        // Auto-contribución
+        public bool AbonoAutomatico { get; set; } = false;
+        public decimal? MontoAbono { get; set; }
+        public string? FrecuenciaAbono { get; set; }
+        public int? DiaAbono { get; set; }
     }
 
     /// <summary>

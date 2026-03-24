@@ -3,6 +3,7 @@ using System;
 using FinanzasPersonales.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinanzasPersonales.Api.Migrations
 {
     [DbContext(typeof(FinanzasDbContext))]
-    partial class FinanzasDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324163007_AddRolloverToPresupuesto")]
+    partial class AddRolloverToPresupuesto
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -775,41 +778,22 @@ namespace FinanzasPersonales.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AbonoAutomatico")
-                        .HasColumnType("boolean");
-
                     b.Property<decimal>("AhorroActual")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<int?>("CuentaId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("DiaAbono")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("FrecuenciaAbono")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<string>("Metas")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<decimal?>("MontoAbono")
-                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<decimal>("MontoRestante")
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<decimal>("MontoTotal")
                         .HasColumnType("decimal(18, 2)");
-
-                    b.Property<DateTime?>("ProximoAbono")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("UltimoAbono")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UserId")
                         .IsRequired()

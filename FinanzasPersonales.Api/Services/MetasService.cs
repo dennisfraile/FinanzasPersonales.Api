@@ -103,5 +103,66 @@ namespace FinanzasPersonales.Api.Services
 
             return proyecciones;
         }
+
+        /// <summary>
+        /// Genera abonos automáticos pendientes para un usuario.
+        /// </summary>
+        public async Task<int> GenerarAbonosAutomaticosAsync(string userId)
+        {
+            var metasPendientes = await _context.Metas
+                .Include(m => m.Cuenta)
+                .Where(m => m.UserId == userId
+                    && m.AbonoAutomatico
+                    && m.MontoAbono.HasValue && m.MontoAbono > 0
+                    && m.ProximoAbono.HasValue && m.ProximoAbono <= DateTime.UtcNow
+                    && m.AhorroActual < m.MontoTotal) // No abonar si ya se completó
+                .ToListAsync();
+
+            int generados = 0;
+
+            foreach (var meta in metasPendientes)
+            {
+                var monto = meta.MontoAbono!.Value;
+
+                // No exceder el monto total de la meta
+                var faltante = meta.MontoTotal - meta.AhorroActual;
+                if (monto > faltante)
+                    monto = faltante;
+
+                // Descontar de la cuenta si está asociada
+                if (meta.CuentaId.HasValue && meta.Cuenta != null)
+                {
+                    if (meta.Cuenta.BalanceActual < monto)
+                        continue; // Saldo insuficiente, saltar
+                    meta.Cuenta.BalanceActual -= monto;
+                }
+
+                meta.AhorroActual += monto;
+                meta.MontoRestante = meta.MontoTotal - meta.AhorroActual;
+                if (meta.MontoRestante < 0)
+                    meta.MontoRestante = 0;
+
+                meta.UltimoAbono = DateTime.UtcNow;
+                meta.ProximoAbono = CalcularProximoAbono(meta.ProximoAbono!.Value, meta.FrecuenciaAbono ?? "Mensual");
+
+                generados++;
+            }
+
+            if (generados > 0)
+                await _context.SaveChangesAsync();
+
+            return generados;
+        }
+
+        private static DateTime CalcularProximoAbono(DateTime desde, string frecuencia)
+        {
+            return frecuencia switch
+            {
+                "Semanal" => desde.AddDays(7),
+                "Quincenal" => desde.AddDays(15),
+                "Mensual" => desde.AddMonths(1),
+                _ => desde.AddMonths(1)
+            };
+        }
     }
 }

@@ -19,5 +19,10 @@ namespace FinanzasPersonales.Api.Services
         /// Obtiene proyecciones de cumplimiento de metas
         /// </summary>
         Task<List<object>> ObtenerProyeccionesAsync(string userId);
+
+        /// <summary>
+        /// Genera abonos automáticos pendientes para un usuario
+        /// </summary>
+        Task<int> GenerarAbonosAutomaticosAsync(string userId);
     }
 }
