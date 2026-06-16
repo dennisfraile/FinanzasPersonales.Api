@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using FinanzasPersonales.Api.Dtos;
+using FinanzasPersonales.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Google.Apis.Auth;
 
@@ -19,12 +20,16 @@ namespace FinanzasPersonales.Api.Controllers
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
+        private readonly ITokenService _tokens;
+        private readonly AuthCookieService _cookies;
 
-        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration, ILogger<AuthController> logger)
+        public AuthController(UserManager<IdentityUser> userManager, IConfiguration configuration, ILogger<AuthController> logger, ITokenService tokens, AuthCookieService cookies)
         {
             _userManager = userManager;
             _configuration = configuration;
             _logger = logger;
+            _tokens = tokens;
+            _cookies = cookies;
         }
 
         /// <summary>
@@ -70,13 +75,17 @@ namespace FinanzasPersonales.Api.Controllers
                     }
                 }
 
-                var tokenString = GenerateJwtToken(user, payload);
+                var fotoUrl = payload.Picture;
+                var accessJwt = _tokens.CreateAccessToken(user, fotoUrl);
+                var refreshRaw = await _tokens.IssueRefreshTokenAsync(user.Id);
+                var accessMin = int.TryParse(_configuration["Jwt:AccessTokenMinutes"], out var am) ? am : 15;
+                var refreshDays = int.TryParse(_configuration["Jwt:RefreshTokenDays"], out var rd) ? rd : 7;
+                _cookies.SetAuthCookies(Response, accessJwt, refreshRaw, accessMin, refreshDays);
 
                 return Ok(new AuthResponseDto
                 {
                     IsSuccess = true,
-                    Message = "Inicio de sesion exitoso.",
-                    Token = tokenString
+                    Message = "Inicio de sesion exitoso."
                 });
             }
             catch (InvalidJwtException)
@@ -144,31 +153,46 @@ namespace FinanzasPersonales.Api.Controllers
             return Ok(new { Message = "Perfil actualizado exitosamente" });
         }
 
-        private string GenerateJwtToken(IdentityUser user, GoogleJsonWebSignature.Payload? googlePayload = null)
+        /// <summary>Rota el refresh token (cookie) y renueva el access token.</summary>
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Refresh()
         {
-            var jwtKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-            var credentials = new SigningCredentials(jwtKey, SecurityAlgorithms.HmacSha256);
+            var raw = Request.Cookies[AuthCookieService.RefreshCookie];
+            if (string.IsNullOrEmpty(raw))
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Sin refresh token." });
 
-            var claims = new List<Claim>
+            var rotated = await _tokens.RotateRefreshTokenAsync(raw);
+            if (rotated == null)
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-
-            if (googlePayload?.Picture != null)
-            {
-                claims.Add(new Claim("FotoUrl", googlePayload.Picture));
+                _cookies.ClearAuthCookies(Response);
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Refresh token invalido." });
             }
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
-                signingCredentials: credentials);
+            var user = await _userManager.FindByIdAsync(rotated.Value.userId);
+            if (user == null)
+            {
+                _cookies.ClearAuthCookies(Response);
+                return Unauthorized(new AuthResponseDto { IsSuccess = false, Message = "Usuario no encontrado." });
+            }
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var accessJwt = _tokens.CreateAccessToken(user, null);
+            var accessMin = int.TryParse(_configuration["Jwt:AccessTokenMinutes"], out var am) ? am : 15;
+            var refreshDays = int.TryParse(_configuration["Jwt:RefreshTokenDays"], out var rd) ? rd : 7;
+            _cookies.SetAuthCookies(Response, accessJwt, rotated.Value.newRefreshRaw, accessMin, refreshDays);
+            return Ok(new AuthResponseDto { IsSuccess = true, Message = "Token renovado." });
+        }
+
+        /// <summary>Revoca el refresh token y borra las cookies.</summary>
+        [HttpPost("logout")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Logout()
+        {
+            var raw = Request.Cookies[AuthCookieService.RefreshCookie];
+            if (!string.IsNullOrEmpty(raw))
+                await _tokens.RevokeAsync(raw);
+            _cookies.ClearAuthCookies(Response);
+            return Ok(new { Message = "Sesion cerrada." });
         }
     }
 }

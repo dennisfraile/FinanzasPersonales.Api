@@ -115,6 +115,10 @@ builder.Services.AddScoped<FinanzasPersonales.Api.Services.IGastosProgramadosSer
 // Registrar servicio de almacenamiento de archivos
 builder.Services.AddScoped<FinanzasPersonales.Api.Services.IFileStorageService, FinanzasPersonales.Api.Services.LocalFileStorageService>();
 
+// Registrar servicios de autenticación (tokens y cookies)
+builder.Services.AddScoped<FinanzasPersonales.Api.Services.ITokenService, FinanzasPersonales.Api.Services.TokenService>();
+builder.Services.AddSingleton<FinanzasPersonales.Api.Services.AuthCookieService>();
+
 // Configurar CORS desde appsettings.json (restringido a métodos y headers específicos)
 var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" };
 if (allowedOrigins.Length == 0 || allowedOrigins.Any(string.IsNullOrWhiteSpace))
@@ -125,7 +129,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .WithHeaders("Content-Type", "Authorization", "X-Requested-With", "x-signalr-user-agent")
+              .WithHeaders("Content-Type", "Authorization", "X-Requested-With", "x-signalr-user-agent", "X-CSRF-Token")
               .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
               .AllowCredentials();
     });
@@ -218,11 +222,17 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var accessToken = context.Request.Query["access_token"];
-            var path = context.HttpContext.Request.Path;
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            var cookieToken = context.Request.Cookies[FinanzasPersonales.Api.Services.AuthCookieService.AccessCookie];
+            if (!string.IsNullOrEmpty(cookieToken))
             {
-                context.Token = accessToken;
+                context.Token = cookieToken;
+            }
+            else
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
             }
             return Task.CompletedTask;
         }
@@ -288,6 +298,9 @@ app.Use(async (context, next) =>
 
 // Habilitar CORS
 app.UseCors();
+
+// Validación CSRF (double-submit cookie) para métodos no seguros
+app.UseMiddleware<FinanzasPersonales.Api.Middleware.CsrfValidationMiddleware>();
 
 // Rate limiting
 app.UseRateLimiter();

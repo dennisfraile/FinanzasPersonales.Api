@@ -170,6 +170,12 @@ namespace FinanzasPersonales.Api.Data
                 .HasForeignKey(gp => gp.GastoRecurrenteId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.TokenHash)
+                .IsUnique();
+            modelBuilder.Entity<RefreshToken>()
+                .HasIndex(rt => rt.UserId);
+
         }
         public FinanzasDbContext(DbContextOptions<FinanzasDbContext> options) : base(options)
         {
@@ -220,5 +226,6 @@ namespace FinanzasPersonales.Api.Data
 
         // Dashboard compartido (read-only shared links)
         public DbSet<DashboardCompartido> DashboardsCompartidos { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
     }
 }
